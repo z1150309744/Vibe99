@@ -2,6 +2,8 @@
 
 Vibe99 is a cross-platform terminal management app for agentic coding. It is still in prototype stage, and the current preferred way to run it is `npm start` while the product and packaging are still being worked out.
 
+![Vibe99 hero](./artifacts/readme-hero.png)
+
 Right now this repository is an active prototype rather than a polished distributable app. The UI, interaction model, packaging, and persistence model are all still evolving.
 
 ## Run
