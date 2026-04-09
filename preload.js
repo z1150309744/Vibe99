@@ -1,0 +1,24 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+const cwd = process.cwd();
+const defaultTabTitle = cwd.split(/[\\/]/).filter(Boolean).pop() || cwd;
+
+contextBridge.exposeInMainWorld('vibe99', {
+  platform: process.platform,
+  defaultCwd: cwd,
+  defaultTabTitle,
+  createTerminal: (payload) => ipcRenderer.invoke('vibe99:terminal-create', payload),
+  writeTerminal: (payload) => ipcRenderer.invoke('vibe99:terminal-write', payload),
+  resizeTerminal: (payload) => ipcRenderer.invoke('vibe99:terminal-resize', payload),
+  destroyTerminal: (payload) => ipcRenderer.invoke('vibe99:terminal-destroy', payload),
+  onTerminalData: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('vibe99:terminal-data', listener);
+    return () => ipcRenderer.removeListener('vibe99:terminal-data', listener);
+  },
+  onTerminalExit: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('vibe99:terminal-exit', listener);
+    return () => ipcRenderer.removeListener('vibe99:terminal-exit', listener);
+  },
+});

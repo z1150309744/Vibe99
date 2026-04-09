@@ -1,0 +1,20 @@
+{
+  "name": "vibe99",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "description": "Electron interaction proof of concept for Vibe99",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "capture": "VIBE99_CAPTURE=1 electron ."
+  },
+  "devDependencies": {
+    "electron": "^36.0.0"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0"
+  }
+}
