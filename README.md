@@ -1,26 +1,34 @@
 # Vibe99
 
-Vibe99 is a cross-platform terminal management app for agentic coding. It is still in prototype stage, and the current preferred way to run it is `npm start` while the product and packaging are still being worked out.
+Vibe99 is a cross-platform terminal management app for agentic coding. It is built around a simple idea: you usually want full focus on one terminal, while keeping lightweight peripheral awareness of the others.
 
 ![Vibe99 hero](./artifacts/readme-hero.png)
 
-Right now this repository is an active prototype rather than a polished distributable app. The UI, interaction model, packaging, and persistence model are all still evolving.
+## About
 
-## Run
+Vibe99 is a single-window terminal workspace for multi-agent and multi-context coding workflows. Instead of treating every terminal like an equal tile, Vibe99 gives one pane the readable body and compresses the rest into preview rails you can still track at a glance.
 
-Install dependencies, then start the prototype:
+The product thesis is `focus + peripheral awareness`.
+
+Today, Vibe99 is implemented as an Electron-based prototype with `xterm.js` and PTY-backed terminal sessions on macOS and Linux. The core interaction model is already real: overlapping panes, tab focus, drag reordering, navigation mode, and live terminals.
+
+## Quick Start
+
+Install dependencies and run the prototype locally:
 
 ```bash
 npm install
 npm start
 ```
 
-For a non-interactive captured render:
+For a static captured render:
 
 ```bash
 npm run capture
 ```
 
-## Status
+## Beta Status
 
-Packaging is not finalized yet. Proper desktop packaging and distribution will be added in a future phase.
+Vibe99 is in active prototype/beta development. The core UX is usable today, but packaging, settings persistence, richer terminal metadata, and multi-window workflows are still being built.
+
+The preferred way to run Vibe99 right now is `npm start`. Proper packaged desktop builds will come later.
