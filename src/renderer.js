@@ -163,16 +163,21 @@ function applyPersistedSettings(nextSettings) {
     return;
   }
 
-  if (Number.isFinite(nextSettings.fontSize)) {
-    settings.fontSize = nextSettings.fontSize;
+  const uiSettings =
+    nextSettings && typeof nextSettings.ui === 'object' && nextSettings.ui !== null
+      ? nextSettings.ui
+      : nextSettings;
+
+  if (Number.isFinite(uiSettings.fontSize)) {
+    settings.fontSize = uiSettings.fontSize;
   }
 
-  if (Number.isFinite(nextSettings.paneOpacity)) {
-    settings.paneOpacity = nextSettings.paneOpacity;
+  if (Number.isFinite(uiSettings.paneOpacity)) {
+    settings.paneOpacity = uiSettings.paneOpacity;
   }
 
-  if (Number.isFinite(nextSettings.paneWidth)) {
-    settings.paneWidth = nextSettings.paneWidth;
+  if (Number.isFinite(uiSettings.paneWidth)) {
+    settings.paneWidth = uiSettings.paneWidth;
   }
 }
 
@@ -183,7 +188,7 @@ function scheduleSettingsSave() {
 
   pendingSettingsSave = window.setTimeout(() => {
     pendingSettingsSave = null;
-    void bridge.saveSettings(settings).catch(reportError);
+    void bridge.saveSettings({ version: 1, ui: settings }).catch(reportError);
   }, 150);
 }
 
@@ -191,7 +196,7 @@ function flushSettingsSave() {
   if (pendingSettingsSave !== null) {
     window.clearTimeout(pendingSettingsSave);
     pendingSettingsSave = null;
-    void bridge.saveSettings(settings).catch(reportError);
+    void bridge.saveSettings({ version: 1, ui: settings }).catch(reportError);
   }
 }
 
