@@ -8,13 +8,14 @@
   "main": "electron/main.js",
   "scripts": {
     "build:config": "tsc -p tsconfig.config.json",
-    "prestart": "npm run build:config",
+    "prepare:native": "node ./scripts/ensure-node-pty-runtime.mjs",
+    "prestart": "npm run build:config && npm run prepare:native",
     "start": "electron .",
-    "precapture": "npm run build:config",
+    "precapture": "npm run build:config && npm run prepare:native",
     "capture": "VIBE99_CAPTURE=1 electron .",
-    "prepackage": "npm run build:config",
+    "prepackage": "npm run build:config && npm run prepare:native",
     "package": "electron-forge package",
-    "premake": "npm run build:config",
+    "premake": "npm run build:config && npm run prepare:native",
     "make": "electron-forge make",
     "release:notes": "node ./scripts/extract-release-notes.mjs"
   },
@@ -27,7 +28,6 @@
     "@electron-forge/maker-zip": "^7.11.1",
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
     "@electron/rebuild": "^4.0.1",
-    "appdmg": "^0.6.6",
     "electron": "^36.0.0",
     "typescript": "^5.9.3"
   },
