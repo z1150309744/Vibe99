@@ -4,7 +4,7 @@ Vibe99 is a desktop terminal workspace for agentic coding. Contributions should 
 
 ## Local Setup
 
-This repo currently builds and packages cleanly on Node 22.
+This repo currently builds and packages cleanly on Node 22, and local app/package commands enforce that requirement.
 
 If you use `nvm`:
 
@@ -106,7 +106,19 @@ For a release:
 5. Create a matching tag such as `v0.2.0`.
 6. Push the commit and tag.
 
-Pushing a `v*` tag builds the macOS artifacts and creates the GitHub release from them.
+Pushing a `v*` tag builds the macOS and Linux artifacts and creates the GitHub release from them.
+
+For Linux packaging on Debian or Ubuntu, install the required system tools first:
+
+```bash
+sudo apt install dpkg fakeroot
+```
+
+The default Linux packaging path produces `.deb` and `.zip` artifacts.
+
+RPM packaging is opt-in and only runs when `rpmbuild` is installed and `VIBE99_ENABLE_RPM=1` is set.
+
+AppImage is intentionally not part of the current release flow because Electron Forge support comes from third-party makers rather than the main Forge packages.
 
 ## Agentic Tools
 

@@ -5,6 +5,36 @@ const { MakerSquirrel } = require('@electron-forge/maker-squirrel');
 const { MakerZIP } = require('@electron-forge/maker-zip');
 const { AutoUnpackNativesPlugin } = require('@electron-forge/plugin-auto-unpack-natives');
 
+const makers = [
+  new MakerSquirrel({
+    authors: 'Vibe99',
+    name: 'vibe99',
+    setupExe: 'Vibe99Setup.exe',
+  }),
+  new MakerZIP({}, ['darwin', 'linux']),
+  new MakerDMG({
+    format: 'ULFO',
+  }),
+  new MakerDeb({
+    options: {
+      bin: 'Vibe99',
+      categories: ['Development', 'TerminalEmulator'],
+      description: 'Focus-first desktop terminal workspace for agentic coding',
+      genericName: 'Terminal Workspace',
+      homepage: 'https://github.com/NekoApocalypse/Vibe99',
+      icon: 'assets/icons/png/512x512.png',
+      maintainer: 'Vibe99',
+      productDescription:
+        'Desktop terminal workspace that keeps one pane readable while the rest stay visible as peripheral context.',
+      section: 'devel',
+    },
+  }),
+];
+
+if (process.platform !== 'linux' || process.env.VIBE99_ENABLE_RPM === '1') {
+  makers.push(new MakerRpm({}));
+}
+
 module.exports = {
   packagerConfig: {
     asar: {
@@ -16,18 +46,6 @@ module.exports = {
     osxSign: false,
   },
   rebuildConfig: {},
-  makers: [
-    new MakerSquirrel({
-      authors: 'Vibe99',
-      name: 'vibe99',
-      setupExe: 'Vibe99Setup.exe',
-    }),
-    new MakerZIP({}, ['darwin', 'linux']),
-    new MakerDMG({
-      format: 'ULFO',
-    }),
-    new MakerRpm({}),
-    new MakerDeb({}),
-  ],
+  makers,
   plugins: [new AutoUnpackNativesPlugin({})],
 };

@@ -76,6 +76,7 @@ The capture script writes a PNG to your system temp directory:
 Cross-platform packaging is set up with Electron Forge:
 
 ```bash
+sudo apt install dpkg fakeroot   # Debian/Ubuntu only, needed for .deb builds
 npm run package
 npm run make
 ```
@@ -86,7 +87,11 @@ npm run make
 
 - macOS: `.dmg` and `.zip`
 - Windows: Squirrel installer output
-- Linux: `.deb`, `.rpm`, and `.zip`
+- Linux: `.deb` and `.zip`
+
+On Linux, RPM packaging is available as an opt-in path with `VIBE99_ENABLE_RPM=1 npm run make` when `rpmbuild` is installed.
+
+AppImage is not part of the release flow yet.
 
 Signing and notarization are intentionally not configured yet.
 
@@ -110,7 +115,7 @@ python3 -m towncrier build --yes --version <version>
 4. Tag the release, for example `v0.2.0`.
 5. Push the commit and tag to GitHub.
 
-Pushing a `v*` tag triggers the GitHub release workflow in [.github/workflows/release.yml](/Users/liyunyang/work_2025/vibe99/.github/workflows/release.yml), which builds the macOS artifacts and publishes them with the matching `CHANGELOG.md` section as the release notes.
+Pushing a `v*` tag triggers the GitHub release workflow in [.github/workflows/release.yml](/Users/liyunyang/work_2025/vibe99/.github/workflows/release.yml), which builds the macOS and Linux artifacts and publishes them with the matching `CHANGELOG.md` section as the release notes.
 
 ## Basic Controls
 

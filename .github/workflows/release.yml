@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release-macos:
+  build-macos:
     runs-on: macos-14
 
     steps:
@@ -36,6 +36,76 @@ jobs:
       - name: Build release artifacts
         run: npm run make
 
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: |
+            out/make/*.dmg
+            out/make/zip/darwin/**/*.zip
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Linux packaging tools
+        run: sudo apt-get update && sudo apt-get install -y dpkg fakeroot
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package version
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          node -e "const pkg=require('./package.json'); const tag=(process.env.GITHUB_REF_NAME || '').replace(/^v/, ''); if (pkg.version !== tag) { console.error(`Tag ${process.env.GITHUB_REF_NAME} does not match package.json version ${pkg.version}`); process.exit(1); }"
+
+      - name: Build Linux release artifacts
+        run: npm run make
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            out/make/deb/**/*.deb
+            out/make/zip/linux/**/*.zip
+          if-no-files-found: error
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs:
+      - build-macos
+      - build-linux
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
       - name: Extract release notes
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
@@ -45,10 +115,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: >
-          gh release create "$GITHUB_REF_NAME"
-          out/make/*.dmg
-          out/make/zip/darwin/arm64/*.zip
-          --title "Vibe99 $GITHUB_REF_NAME"
-          --notes-file release-notes.md
-          --verify-tag
+        run: |
+          mapfile -t assets < <(find release-assets -type f | sort)
+          gh release create "$GITHUB_REF_NAME" \
+            "${assets[@]}" \
+            --title "Vibe99 $GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag
