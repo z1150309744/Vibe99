@@ -46,21 +46,15 @@ function ensureElectronAlias() {
 
   try {
     const electronBinary = require('electron');
-    const tempScriptPath = path.join(packageRoot, '.tmp-electron-abi.js');
-    fs.writeFileSync(tempScriptPath, 'console.log(process.versions.modules);');
-    try {
-      electronModules = Number(
-        execFileSync(electronBinary, [tempScriptPath], {
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            ELECTRON_RUN_AS_NODE: '1',
-          },
-        }).trim()
-      );
-    } finally {
-      fs.rmSync(tempScriptPath, { force: true });
-    }
+    electronModules = Number(
+      execFileSync(electronBinary, ['-e', 'console.log(process.versions.modules)'], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          ELECTRON_RUN_AS_NODE: '1',
+        },
+      }).trim()
+    );
 
     if (!electronVersion) {
       electronVersion = require('electron/package.json').version;
