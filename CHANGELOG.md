@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 0.4.1 - 2026-04-13
+
+### Added
+
+- Linux releases now publish an AppImage alongside the `.deb` and `.zip`, while macOS release artifacts are paused until signing and notarization are worth the cost.
+
+
 ## 0.4.0 - 2026-04-13
 
 ### Added
