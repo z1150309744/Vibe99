@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 0.4.2 - 2026-04-13
+
+### Fixed
+
+- Linux release builds now use a Forge-compatible AppImage maker implementation instead of the outdated adapter that failed during `npm run make`.
+
+
 ## 0.4.1 - 2026-04-13
 
 ### Added
