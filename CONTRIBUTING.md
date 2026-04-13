@@ -4,7 +4,7 @@ Vibe99 is a desktop terminal workspace for agentic coding. Contributions should 
 
 ## Local Setup
 
-This repo currently builds and packages cleanly on Node 22.
+This repo currently builds and packages cleanly on Node 22, and local app/package commands enforce that requirement.
 
 If you use `nvm`:
 

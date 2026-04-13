@@ -6,16 +6,20 @@
   "license": "GPL-3.0-or-later",
   "description": "Electron interaction proof of concept for Vibe99",
   "main": "electron/main.js",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
+    "check:node": "node ./scripts/check-supported-node.mjs",
     "build:config": "tsc -p tsconfig.config.json",
     "prepare:native": "node ./scripts/ensure-node-pty-runtime.mjs",
-    "prestart": "npm run build:config && npm run prepare:native",
+    "prestart": "npm run check:node && npm run build:config && npm run prepare:native",
     "start": "electron .",
-    "precapture": "npm run build:config && npm run prepare:native",
+    "precapture": "npm run check:node && npm run build:config && npm run prepare:native",
     "capture": "VIBE99_CAPTURE=1 electron .",
-    "prepackage": "npm run build:config && npm run prepare:native",
+    "prepackage": "npm run check:node && npm run build:config && npm run prepare:native",
     "package": "electron-forge package",
-    "premake": "npm run build:config && npm run prepare:native",
+    "premake": "npm run check:node && npm run build:config && npm run prepare:native",
     "make": "electron-forge make",
     "release:notes": "node ./scripts/extract-release-notes.mjs"
   },
