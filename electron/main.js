@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, Menu, nativeImage } = require('electron');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const pty = require('@homebridge/node-pty-prebuilt-multiarch');
+const pty = require('./pty.js');
 const { loadConfig, saveConfig } = require('./dist/config.js');
 
 const PTY_PACKAGE_NAME = '@homebridge/node-pty-prebuilt-multiarch';
@@ -63,7 +63,13 @@ function isExecutableFile(filePath) {
 
 function getShellLaunchConfigs() {
   if (process.platform === 'win32') {
-    return [{ shell: 'powershell.exe', args: [] }];
+    return [
+      { shell: process.env.VIBE99_WINDOWS_SHELL, args: [] },
+      { shell: 'powershell.exe', args: [] },
+      { shell: 'pwsh.exe', args: [] },
+      { shell: process.env.ComSpec, args: [] },
+      { shell: 'cmd.exe', args: [] },
+    ].filter((candidate) => typeof candidate.shell === 'string' && candidate.shell.length > 0);
   }
 
   const candidates = [];
@@ -131,6 +137,11 @@ ipcMain.handle('vibe99:terminal-create', (event, payload) => {
         cols: Math.max(20, cols || 80),
         rows: Math.max(8, rows || 24),
         cwd: spawnCwd,
+        ...(process.platform === 'win32'
+          ? {
+              useConpty: false,
+            }
+          : {}),
         env: {
           ...process.env,
           COLORTERM: 'truecolor',
