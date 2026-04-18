@@ -32,6 +32,7 @@
     "@electron-forge/maker-zip": "^7.11.1",
     "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
     "@electron/rebuild": "^4.0.1",
+    "7zip-bin": "^5.2.0",
     "electron": "^36.0.0",
     "electron-windows": "npm:electron@29.4.6",
     "electron-builder": "^26.8.1",
@@ -47,6 +48,7 @@
     "appId": "com.vibe99.app",
     "productName": "Vibe99",
     "electronVersion": "29.4.6",
+    "compression": "store",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "out/builder",
@@ -70,7 +72,8 @@
       "verifyUpdateCodeSignature": false
     },
     "portable": {
-      "artifactName": "${productName}-${version}-windows-portable-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-windows-portable-${arch}.${ext}",
+      "unpackDirName": "Vibe99Portable"
     }
   }
 }

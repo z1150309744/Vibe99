@@ -40,4 +40,19 @@ if (result.error) {
   throw result.error;
 }
 
+if (result.status === 0 && isWindows && command === 'make') {
+  const verifyResult = spawnSync(process.execPath, ['./scripts/verify-windows-portable.mjs'], {
+    stdio: 'inherit',
+    env: process.env,
+  });
+
+  if (verifyResult.error) {
+    throw verifyResult.error;
+  }
+
+  if (verifyResult.status !== 0) {
+    process.exit(verifyResult.status ?? 1);
+  }
+}
+
 process.exit(result.status ?? 1);
