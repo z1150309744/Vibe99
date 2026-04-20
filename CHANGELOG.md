@@ -2,6 +2,14 @@
 
 <!-- towncrier release notes start -->
 
+## 0.4.5 - 2026-04-20
+
+### Fixed
+
+- On Windows, Codex and Typeless paste now route text and image paste correctly, the launched app uses the correct icon, and tabs close automatically when their terminal process exits.
+- Windows local packaging now produces a self-contained portable Electron Builder build while keeping macOS and Linux npm workflows unchanged.
+
+
 ## 0.4.4 - 2026-04-13
 
 ### Fixed
