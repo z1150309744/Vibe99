@@ -1,11 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::sync::Arc;
+use tauri::Manager;
 use vibe99_lib::commands::context_menu;
 use vibe99_lib::commands::settings;
 use vibe99_lib::commands::shell_profile;
-use std::sync::Arc;
-use tauri::Manager;
 use vibe99_lib::commands::terminal::{self, AppState};
+use vibe99_lib::commands::wsl as wsl_cmd;
 use vibe99_lib::pty::PtyManager;
 
 fn main() {
@@ -31,6 +32,9 @@ fn main() {
             shell_profile::shell_profile_remove,
             context_menu::show_context_menu,
             context_menu::emit_menu_action,
+            wsl_cmd::wsl_status,
+            wsl_cmd::wsl_convert_path,
+            wsl_cmd::wsl_cwd,
         ])
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::Destroyed) {

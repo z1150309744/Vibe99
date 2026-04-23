@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::wsl;
+
 /// Minimum column count for a PTY session.
 const MIN_COLS: u16 = 20;
 
@@ -305,6 +307,8 @@ impl PtyManager {
 /// 1. Default profile from settings (if configured and valid).
 /// 2. Remaining profiles from settings (if any).
 /// 3. Auto-detected platform fallbacks (always appended as safety net).
+///
+/// On Windows, WSL shells are included in the auto-detected fallbacks.
 fn shell_candidates(app: &AppHandle) -> Vec<ShellCandidate> {
     let mut candidates: Vec<ShellCandidate> = Vec::new();
     let mut seen: HashSet<PathBuf> = HashSet::new();
@@ -390,18 +394,24 @@ fn extract_default_profile(config: &serde_json::Value) -> String {
 ///
 /// This is the fallback chain used when no profiles are configured in
 /// settings, or when all configured profiles fail to resolve.
+/// On Windows, WSL shells are offered after native Windows shells.
 fn auto_detected_candidates() -> Vec<ShellCandidate> {
     let mut candidates: Vec<ShellCandidate> = Vec::new();
 
     if cfg!(target_os = "windows") {
         // Windows: check custom env, then PowerShell, then pwsh, then
-        // ComSpec, then cmd.exe.
+        // ComSpec, then cmd.exe, then WSL (if available).
         if let Ok(custom) = std::env::var("VIBE99_WINDOWS_SHELL") {
             if !custom.is_empty() {
-                candidates.push(ShellCandidate {
-                    shell: PathBuf::from(&custom),
-                    args: vec![],
-                });
+                // Special case: "wsl.exe" triggers WSL detection.
+                if custom.eq_ignore_ascii_case("wsl.exe") {
+                    push_wsl_candidates(&mut candidates, None);
+                } else {
+                    candidates.push(ShellCandidate {
+                        shell: PathBuf::from(&custom),
+                        args: vec![],
+                    });
+                }
             }
         }
         for shell in &["powershell.exe", "pwsh.exe", "cmd.exe"] {
@@ -418,6 +428,8 @@ fn auto_detected_candidates() -> Vec<ShellCandidate> {
                 });
             }
         }
+        // Append WSL candidates after native Windows shells.
+        push_wsl_candidates(&mut candidates, None);
     } else {
         // Unix (Linux / macOS): $SHELL first (only if absolute), then
         // platform-specific fallbacks, deduplicated.
@@ -453,9 +465,67 @@ fn auto_detected_candidates() -> Vec<ShellCandidate> {
     candidates
 }
 
+/// Append WSL shell candidates to the list.
+///
+/// On non-Windows or when WSL is not available this is a no-op.
+/// `distro_override` allows forcing a specific distribution (used by
+/// `VIBE99_WINDOWS_SHELL=wsl.exe`).
+#[cfg(target_os = "windows")]
+fn push_wsl_candidates(candidates: &mut Vec<ShellCandidate>, distro_override: Option<&str>) {
+    if !wsl::is_wsl_available() {
+        return;
+    }
+
+    // Detect the default shell inside WSL.
+    let default_shell = wsl::detect_wsl_default_shell().unwrap_or_else(|| "/bin/bash".into());
+
+    let args = wsl::wsl_shell_args(distro_override, &default_shell, &["-il".into()]);
+
+    candidates.push(ShellCandidate {
+        shell: PathBuf::from("wsl.exe"),
+        args,
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn push_wsl_candidates(_candidates: &mut Vec<ShellCandidate>, _distro_override: Option<&str>) {}
+
 /// Build a `CommandBuilder` for a shell candidate. Returns an error if
 /// the candidate binary does not exist or is not executable.
+///
+/// WSL candidates (shell == "wsl.exe") are handled specially: `wsl.exe`
+/// is verified on the Windows side, but the inner shell (e.g. `/bin/bash`)
+/// is not checked since it lives inside the WSL filesystem. The `cwd` is
+/// converted from Windows to WSL path format when the candidate is WSL.
 fn build_command(candidate: &ShellCandidate, cwd: &Path) -> Result<CommandBuilder, String> {
+    let is_wsl = cfg!(target_os = "windows")
+        && candidate
+            .shell
+            .file_name()
+            .is_some_and(|n| n.eq_ignore_ascii_case("wsl.exe"));
+
+    if is_wsl {
+        // Verify wsl.exe exists on the Windows PATH.
+        let wsl_path = which("wsl.exe").ok_or("wsl.exe not found on PATH")?;
+
+        let mut cmd = CommandBuilder::new(&wsl_path);
+        cmd.args(&candidate.args);
+
+        // Convert Windows cwd to WSL path if it looks like a Windows path.
+        let cwd_str = cwd.to_string_lossy();
+        if let Some(wsl_cwd) = wsl::windows_to_wsl_path(&cwd_str) {
+            cmd.cwd(PathBuf::from(&wsl_cwd));
+        } else {
+            cmd.cwd(cwd);
+        }
+
+        // Set WSLENV so WSL forwards selected env vars from Windows.
+        let wslenv = wsl::wslenv_value();
+        cmd.env("WSLENV", wslenv);
+
+        return Ok(cmd);
+    }
+
     if !candidate.shell.exists() {
         return Err(format!("shell not found: {:?}", candidate.shell));
     }
@@ -506,6 +576,46 @@ fn dirs_home() -> Option<PathBuf> {
 // ----------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------
+
+/// Locate an executable on the system PATH.
+///
+/// Returns the full path if found, `None` otherwise. On Windows this also
+/// checks the current directory and appends `.exe` if no extension is
+/// present.
+#[cfg(target_os = "windows")]
+fn which(name: &str) -> Option<PathBuf> {
+    // Check the bare name first (handles absolute paths).
+    if Path::new(name).is_file() {
+        return Some(PathBuf::from(name));
+    }
+
+    let exe_name = if name.ends_with(".exe") {
+        name.to_string()
+    } else {
+        format!("{name}.exe")
+    };
+
+    // System PATH
+    if let Ok(path_var) = std::env::var("PATH") {
+        for dir in path_var.split(';') {
+            let candidate = PathBuf::from(dir).join(&exe_name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    None
+}
+
+#[cfg(not(target_os = "windows"))]
+fn which(name: &str) -> Option<PathBuf> {
+    if Path::new(name).is_file() {
+        Some(PathBuf::from(name))
+    } else {
+        None
+    }
+}
 
 /// Check whether a path refers to an executable file.
 #[cfg(unix)]
