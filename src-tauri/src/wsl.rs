@@ -20,7 +20,9 @@
 //!   meaningful in WSL are forwarded, preventing Windows-specific noise from
 //!   polluting the Linux environment (P11: functional self-discipline).
 
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
+#[cfg(target_os = "windows")]
 use std::process::Command;
 
 // ----------------------------------------------------------------
