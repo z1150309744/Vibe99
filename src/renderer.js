@@ -1,11 +1,34 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 
 function basename(path) {
   return path.replace(/\/+$/, '').split('/').pop() || '/';
 }
+
+function splitArgs(str) {
+  const args = [];
+  let cur = '';
+  let inQuote = false;
+  let quoteChar = '';
+  for (const ch of str) {
+    if (inQuote) {
+      if (ch === quoteChar) { inQuote = false; } else { cur += ch; }
+    } else if (ch === '"' || ch === "'") {
+      inQuote = true;
+      quoteChar = ch;
+    } else if (/\s/.test(ch)) {
+      if (cur) { args.push(cur); cur = ''; }
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur) { args.push(cur); }
+  return args;
+}
+
 
 function createUnavailableBridge() {
   const fail = () => {
@@ -169,6 +192,7 @@ let renamingPaneId = null;
 let dragState = null;
 let isNavigationMode = false;
 let pendingTabFocus = null;
+let sessionRestoreComplete = false;
 
 const paneNodeMap = new Map();
 
@@ -180,6 +204,7 @@ const addPaneButtonEl = document.getElementById('tabs-add');
 const settingsButtonEl = document.getElementById('tabs-settings');
 const settingsPanelEl = document.getElementById('settings-panel');
 const fontSizeInputEl = document.getElementById('font-size-input');
+const fontFamilyInputEl = document.getElementById('font-family-input');
 const paneWidthRangeEl = document.getElementById('pane-width-range');
 const paneWidthInputEl = document.getElementById('pane-width-input');
 const paneWidthValueEl = document.getElementById('pane-width-value');
@@ -189,6 +214,7 @@ const paneOpacityValueEl = document.getElementById('pane-opacity-value');
 
 const settings = {
   fontSize: 13,
+  fontFamily: '',
   paneOpacity: 0.8,
   paneWidth: 720,
 };
@@ -214,8 +240,14 @@ const removeTerminalExitListener = bridge.onTerminalExit(({ paneId, exitCode }) 
     return;
   }
 
-  // If the terminal was destroyed for a shell change, don't close the pane.
-  if (node._shellChanging) {
+  // If the terminal was destroyed for a shell change, or the process exited
+  // within a short grace period after a shell change, don't close the pane.
+  const graceMs = 3000;
+  const recentShellChange = node._shellChangeTime && (Date.now() - node._shellChangeTime < graceMs);
+  if (node._shellChanging || recentShellChange) {
+    node.sessionReady = false;
+    node.terminal.writeln('');
+    node.terminal.writeln(`\x1b[38;5;204m[shell exited with code ${exitCode}]\x1b[0m`);
     return;
   }
 
@@ -272,6 +304,7 @@ function applySettings() {
   document.documentElement.style.setProperty('--pane-opacity', settings.paneOpacity.toFixed(2));
   document.documentElement.style.setProperty('--pane-width', `${settings.paneWidth}px`);
   fontSizeInputEl.value = String(settings.fontSize);
+  fontFamilyInputEl.value = settings.fontFamily;
   paneWidthRangeEl.value = String(settings.paneWidth);
   paneWidthInputEl.value = String(settings.paneWidth);
   paneWidthValueEl.textContent = `${settings.paneWidth}px`;
@@ -294,6 +327,10 @@ function applyPersistedSettings(nextSettings) {
     settings.fontSize = uiSettings.fontSize;
   }
 
+  if (typeof uiSettings.fontFamily === 'string') {
+    settings.fontFamily = uiSettings.fontFamily;
+  }
+
   if (Number.isFinite(uiSettings.paneOpacity)) {
     settings.paneOpacity = uiSettings.paneOpacity;
   }
@@ -303,6 +340,51 @@ function applyPersistedSettings(nextSettings) {
   }
 }
 
+function buildSessionData() {
+  const focusedIndex = getFocusedIndex();
+  return {
+    panes: panes.map((p) => ({
+      title: p.title,
+      cwd: p.cwd,
+      accent: p.accent,
+      shellProfileId: p.shellProfileId,
+    })),
+    focusedPaneIndex: focusedIndex >= 0 ? focusedIndex : 0,
+  };
+}
+
+function restoreSession(session) {
+  const validPanes = (session.panes ?? [])
+    .filter((p) => p && typeof p.accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(p.accent))
+    .map((p, index) => ({
+      id: `p${index + 1}`,
+      title: (typeof p.title === 'string' && p.title) || null,
+      terminalTitle: bridge.defaultTabTitle,
+      cwd: (typeof p.cwd === 'string' && p.cwd) || bridge.defaultCwd,
+      accent: p.accent,
+      shellProfileId: (typeof p.shellProfileId === 'string' && p.shellProfileId) || null,
+    }));
+
+  if (validPanes.length === 0) {
+    panes = initialPanes.map((p) => ({
+      ...p,
+      cwd: bridge.defaultCwd,
+      terminalTitle: bridge.defaultTabTitle,
+    }));
+    focusedPaneId = panes[0].id;
+    nextPaneNumber = panes.length + 1;
+    return;
+  }
+
+  panes = validPanes;
+  const focusedIndex = Math.min(
+    Number.isFinite(session.focusedPaneIndex) ? session.focusedPaneIndex : 0,
+    panes.length - 1,
+  );
+  focusedPaneId = panes[Math.max(0, focusedIndex)].id;
+  nextPaneNumber = panes.length + 1;
+}
+
 function scheduleSettingsSave() {
   if (pendingSettingsSave !== null) {
     window.clearTimeout(pendingSettingsSave);
@@ -310,7 +392,7 @@ function scheduleSettingsSave() {
 
   pendingSettingsSave = window.setTimeout(() => {
     pendingSettingsSave = null;
-    void bridge.saveSettings({ version: 1, ui: settings }).catch(reportError);
+    void bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
   }, 150);
 }
 
@@ -318,7 +400,7 @@ function flushSettingsSave() {
   if (pendingSettingsSave !== null) {
     window.clearTimeout(pendingSettingsSave);
     pendingSettingsSave = null;
-    void bridge.saveSettings({ version: 1, ui: settings }).catch(reportError);
+    void bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
   }
 }
 
@@ -505,7 +587,7 @@ function createShellProfileEditor() {
       id: inputs.id.value.trim(),
       name: inputs.name.value.trim(),
       command: inputs.command.value.trim(),
-      args: inputs.args.value.trim().split(/\s+/).filter(Boolean),
+      args: splitArgs(inputs.args.value.trim()),
     };
 
     if (!profile.id || !profile.command) {
@@ -540,17 +622,28 @@ function changePaneShell(paneId, profileId) {
   const node = paneNodeMap.get(paneId);
   if (!node) return;
 
+  const previousProfileId = panes.find((p) => p.id === paneId)?.shellProfileId ?? null;
+
   panes = panes.map((p) =>
     p.id === paneId ? { ...p, shellProfileId: profileId } : p
   );
+  scheduleSettingsSave();
 
   // Suppress the exit handler — the old PTY is about to be replaced.
   // spawn() on the backend already destroys any previous session.
   node._shellChanging = true;
+  node._shellChangeTime = Date.now();
   node.sessionReady = false;
   node.terminal.clear();
   initializePaneTerminal(node).finally(() => {
     node._shellChanging = false;
+    // Revert profile on failure so the session doesn't persist a broken profile.
+    if (!node.sessionReady) {
+      panes = panes.map((p) =>
+        p.id === paneId ? { ...p, shellProfileId: previousProfileId } : p
+      );
+      scheduleSettingsSave();
+    }
   });
 }
 
@@ -735,7 +828,7 @@ function createPane(pane) {
     cursorBlink: true,
     disableStdin: false,
     drawBoldTextInBrightColors: false,
-    fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+    fontFamily: settings.fontFamily || 'Menlo, Monaco, Consolas, "Liberation Mono", monospace',
     fontSize: settings.fontSize,
     lineHeight: 1.2,
     scrollback: 5000,
@@ -746,6 +839,7 @@ function createPane(pane) {
   terminal.loadAddon(fitAddon);
   terminal.loadAddon(webLinksAddon);
   terminal.open(terminalHost);
+  try { terminal.loadAddon(new WebglAddon()); } catch {}
   terminal.attachCustomKeyEventHandler((event) => {
     if (!isWindowsCtrlVPasteHotkey(event)) {
       return true;
@@ -803,6 +897,7 @@ function entryNeedsTabRefresh(paneId) {
 
 function fitTerminal(node, force = false) {
   node.terminal.options.fontSize = settings.fontSize;
+  node.terminal.options.fontFamily = settings.fontFamily || undefined;
   node.fitAddon.fit();
 
   const cols = Math.max(20, node.terminal.cols || 80);
@@ -824,15 +919,21 @@ function fitTerminal(node, force = false) {
 async function initializePaneTerminal(node) {
   fitTerminal(node, true);
   const pane = panes.find((p) => p.id === node.paneId);
-  await bridge.createTerminal({
-    paneId: node.paneId,
-    cols: node.terminal.cols,
-    rows: node.terminal.rows,
-    cwd: node.cwd,
-    shellProfileId: pane?.shellProfileId ?? null,
-  });
-  node.sessionReady = true;
-  fitTerminal(node, true);
+  const profileId = pane?.shellProfileId ?? null;
+  try {
+    await bridge.createTerminal({
+      paneId: node.paneId,
+      cols: node.terminal.cols,
+      rows: node.terminal.rows,
+      cwd: node.cwd,
+      shellProfileId: profileId,
+    });
+    node.sessionReady = true;
+    fitTerminal(node, true);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    node.terminal.writeln(`\x1b[38;5;204mFailed to start shell${profileId ? ` "${profileId}"` : ''}: ${message}\x1b[0m`);
+  }
 }
 
 function ensurePaneNodes() {
@@ -1140,6 +1241,9 @@ function render(refit = false) {
   renderTabs();
   renderPanes(refit);
   updateStatus();
+  if (sessionRestoreComplete) {
+    scheduleSettingsSave();
+  }
 }
 
 function moveFocus(delta) {
@@ -1593,6 +1697,13 @@ fontSizeInputEl.addEventListener('change', () => {
   scheduleSettingsSave();
 });
 
+fontFamilyInputEl.addEventListener('change', () => {
+  settings.fontFamily = fontFamilyInputEl.value.trim();
+  applySettings();
+  render(true);
+  scheduleSettingsSave();
+});
+
 function updatePaneWidth(nextValue) {
   const parsedValue = Number(nextValue);
   if (!Number.isFinite(parsedValue)) {
@@ -1661,15 +1772,24 @@ window.addEventListener('resize', () => {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await bridge.cwdReady;
-    panes = panes.map((p) =>
-      p.title === null
-        ? { ...p, cwd: bridge.defaultCwd, terminalTitle: bridge.defaultTabTitle }
-        : p
-    );
-    applyPersistedSettings(await bridge.loadSettings());
+
+    const savedSettings = await bridge.loadSettings();
+    applyPersistedSettings(savedSettings);
     applySettings();
     loadShellProfiles();
+
+    if (savedSettings?.session?.panes?.length > 0) {
+      restoreSession(savedSettings.session);
+    } else {
+      panes = panes.map((p) =>
+        p.title === null
+          ? { ...p, cwd: bridge.defaultCwd, terminalTitle: bridge.defaultTabTitle }
+          : p
+      );
+    }
+
     render(true);
+    sessionRestoreComplete = true;
   } catch (error) {
     reportError(error);
   }

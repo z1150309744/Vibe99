@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_CONFIG_VERSION: u8 = 2;
+const CURRENT_CONFIG_VERSION: u8 = 3;
 
 const DEFAULT_FONT_SIZE: u32 = 13;
 const DEFAULT_PANE_OPACITY: f64 = 0.8;
@@ -142,10 +142,68 @@ fn sanitize_ui_config(ui: Option<&Value>) -> Value {
     let pane_width = get_number(ui, "paneWidth", DEFAULT_PANE_WIDTH as f64);
     let pane_width = ((pane_width / 10.0).round() * 10.0).clamp(520.0, 2000.0) as u32;
 
-    serde_json::json!({
+    let font_family = ui
+        .get("fontFamily")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or("");
+
+    let mut result = serde_json::json!({
         "fontSize": font_size,
         "paneOpacity": pane_opacity,
         "paneWidth": pane_width,
+    });
+
+    if !font_family.is_empty() {
+        result.as_object_mut().unwrap().insert(
+            "fontFamily".into(),
+            Value::String(font_family.to_string()),
+        );
+    }
+
+    result
+}
+
+/// Sanitize the `session` block of a config.
+///
+/// Validates that each pane entry has a valid `accent` hex color.
+/// Returns `Value::Null` if the session is missing, empty, or has no valid panes.
+fn sanitize_session(session: Option<&Value>) -> Value {
+    let panes = match session
+        .and_then(|s| s.as_object())
+        .and_then(|o| o.get("panes"))
+        .and_then(|p| p.as_array())
+    {
+        Some(arr) => arr,
+        None => return Value::Null,
+    };
+
+    let valid: Vec<Value> = panes
+        .iter()
+        .filter(|p| {
+            p.get("accent")
+                .and_then(|v| v.as_str())
+                .is_some_and(|s| s.starts_with('#') && s.len() == 7 && s[1..].chars().all(|c| c.is_ascii_hexdigit()))
+        })
+        .cloned()
+        .collect();
+
+    if valid.is_empty() {
+        return Value::Null;
+    }
+
+    let focused_index = session
+        .and_then(|s| s.as_object())
+        .and_then(|o| o.get("focusedPaneIndex"))
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0) as usize;
+
+    let focused_index = focused_index.min(valid.len() - 1);
+
+    serde_json::json!({
+        "panes": valid,
+        "focusedPaneIndex": focused_index,
     })
 }
 
@@ -163,15 +221,23 @@ pub(crate) fn sanitize_config(candidate: &Value) -> Value {
         .and_then(|v| v.as_u64());
 
     match version {
-        Some(v) if v == 2 => {
-            // Current format: sanitize both blocks.
+        Some(v) if v >= 2 => {
+            // Version 2+ format: sanitize ui, shell, and optionally session blocks.
             let obj = candidate.as_object().unwrap();
             let profiles = sanitize_shell_profiles(obj.get("shell").and_then(|s| s.get("profiles")));
-            serde_json::json!({
+            let session = sanitize_session(obj.get("session"));
+
+            let mut result = serde_json::json!({
                 "version": CURRENT_CONFIG_VERSION,
                 "ui": sanitize_ui_config(obj.get("ui")),
                 "shell": sanitize_shell_config(obj.get("shell"), &profiles),
-            })
+            });
+
+            if !session.is_null() {
+                result.as_object_mut().unwrap().insert("session".into(), session);
+            }
+
+            result
         }
         Some(v) if v == 1 => {
             // Version 1 → 2 migration: preserve ui, add empty shell block.
@@ -243,13 +309,26 @@ pub fn settings_load(app: AppHandle) -> Result<Value, String> {
 /// The input is sanitized before writing, so the returned value is the
 /// canonical representation that was persisted.
 #[tauri::command]
-pub fn settings_save(app: AppHandle, settings: Value) -> Result<Value, String> {
+pub fn settings_save(app: AppHandle, mut settings: Value) -> Result<Value, String> {
     let path = settings_path(&app)?;
 
     // Create parent directory if it doesn't exist
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("failed to create settings directory: {e}"))?;
+    }
+
+    // The frontend may send a partial payload (only version, ui, session)
+    // without the `shell` block. Preserve the existing `shell` block from
+    // disk so that user-edited profiles are not silently wiped.
+    if settings.get("shell").is_none() && path.exists() {
+        let shell = std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|c| serde_json::from_str::<Value>(&c).ok())
+            .and_then(|v| v.get("shell").cloned());
+        if let (Some(shell), Some(obj)) = (shell, settings.as_object_mut()) {
+            obj.insert("shell".into(), shell);
+        }
     }
 
     let sanitized = sanitize_config(&settings);
