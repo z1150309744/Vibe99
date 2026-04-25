@@ -214,6 +214,7 @@ let panes = initialPanes.map((pane) => ({ ...pane }));
 let focusedPaneId = panes[0].id;
 let nextPaneNumber = panes.length + 1;
 let renamingPaneId = null;
+let isRenderingTabs = false; // Guard against re-entrant renderTabs calls
 let dragState = null;
 let isNavigationMode = false;
 let pendingTabFocus = null;
@@ -438,7 +439,7 @@ function scheduleSettingsSave() {
 
   pendingSettingsSave = window.setTimeout(() => {
     pendingSettingsSave = null;
-    void bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
+    bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
   }, 150);
 }
 
@@ -1113,12 +1114,21 @@ function beginRenamePane(index) {
 
   clearPendingTabFocus();
   renamingPaneId = pane.id;
-  render();
+  try {
+    render();
+  } catch (error) {
+    renamingPaneId = null;
+    reportError(error);
+  }
 }
 
 function cancelRenamePane() {
   renamingPaneId = null;
-  render();
+  try {
+    render();
+  } catch (error) {
+    reportError(error);
+  }
 }
 
 function commitRenamePane(paneId, nextTitle) {
@@ -1129,7 +1139,11 @@ function commitRenamePane(paneId, nextTitle) {
     entry.id === paneId ? { ...entry, title: trimmedTitle || null } : entry
   );
 
-  render();
+  try {
+    render();
+  } catch (error) {
+    reportError(error);
+  }
 }
 
 function clearPendingTabFocus() {
@@ -1256,6 +1270,10 @@ function getTabDropIndex(clientX) {
 }
 
 function renderTabs() {
+  if (isRenderingTabs) {
+    return;
+  }
+  isRenderingTabs = true;
   const focusedIndex = getFocusedIndex();
   const draggedPaneId = dragState?.paneId ?? null;
   let slot = 0;
@@ -1275,6 +1293,7 @@ function renderTabs() {
       return createTab(pane, index, focusedIndex, dragMeta);
     })
   );
+  isRenderingTabs = false;
 }
 
 function renderPanes(refit = false) {
