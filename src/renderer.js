@@ -91,7 +91,7 @@ function createTauriBridge(tauri) {
   const { getCurrentWindow } = tauri.window;
   const { readText: clipboardReadText, writeText: clipboardWriteText } =
     tauri.clipboardManager;
-  const { open: shellOpen } = tauri.shell;
+  const { openUrl } = tauri.opener;
 
   function base64Encode(str) {
     const bytes = new TextEncoder().encode(str);
@@ -146,7 +146,7 @@ function createTauriBridge(tauri) {
       const text = await clipboardReadText();
       return { text: text ?? '', hasImage: false };
     },
-    openExternalUrl: (url) => shellOpen(url),
+    openExternalUrl: (url) => openUrl(url),
     showContextMenu: () => {},
     loadSettings: () => invoke('settings_load'),
     saveSettings: (payload) => invoke('settings_save', { settings: payload }),
