@@ -434,7 +434,7 @@ function scheduleSettingsSave() {
 
   pendingSettingsSave = window.setTimeout(() => {
     pendingSettingsSave = null;
-    void bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
+    bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
   }, 150);
 }
 
@@ -720,10 +720,6 @@ function isLinkOpenModifierPressed(event) {
 }
 
 function handleTerminalLinkActivation(event, uri) {
-  if (!isLinkOpenModifierPressed(event)) {
-    return;
-  }
-
   event.preventDefault();
   event.stopPropagation();
   void bridge.openExternalUrl(uri).catch(reportError);
@@ -1084,12 +1080,21 @@ function beginRenamePane(index) {
 
   clearPendingTabFocus();
   renamingPaneId = pane.id;
-  render();
+  try {
+    render();
+  } catch (error) {
+    renamingPaneId = null;
+    reportError(error);
+  }
 }
 
 function cancelRenamePane() {
   renamingPaneId = null;
-  render();
+  try {
+    render();
+  } catch (error) {
+    reportError(error);
+  }
 }
 
 function commitRenamePane(paneId, nextTitle) {
@@ -1100,7 +1105,11 @@ function commitRenamePane(paneId, nextTitle) {
     entry.id === paneId ? { ...entry, title: trimmedTitle || null } : entry
   );
 
-  render();
+  try {
+    render();
+  } catch (error) {
+    reportError(error);
+  }
 }
 
 function clearPendingTabFocus() {
