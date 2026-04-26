@@ -50,7 +50,8 @@ body {
   align-items: center;
   gap: 0;
   padding: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: none;
+  /*border-bottom: 1px solid rgba(255, 255, 255, 0.06);*/
 }
 
 .tabs-list {
@@ -83,7 +84,6 @@ body {
   background: var(--pane-accent);
   box-shadow: none;
   border-bottom: 1px solid var(--pane-accent);
-  margin-bottom: -1px;
   z-index: 1;
 }
 
@@ -146,6 +146,15 @@ body {
 .tab-close:hover {
   color: rgba(255, 255, 255, 0.88);
   background: rgba(255, 255, 255, 0.05);
+}
+
+.tab.is-focused .tab-close {
+  color: color-mix(in srgb, var(--tab-text-color) 50%, transparent);
+}
+
+.tab.is-focused .tab-close:hover {
+  color: color-mix(in srgb, var(--tab-text-color) 88%, transparent);
+  background: color-mix(in srgb, var(--tab-text-color) 5%, transparent);
 }
 
 .tab-close:disabled {
@@ -526,6 +535,7 @@ body {
 .pane.is-focused::after,
 .pane.is-navigation-target::after {
   opacity: 0;
+  transition: none;
 }
 
 .pane.is-navigation-target {
