@@ -2,6 +2,12 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
+import {
+  openCommandPalette,
+  closeCommandPalette,
+  isCommandPaletteOpen,
+  isCommandPaletteHotkey,
+} from './command-palette.js';
 import '@xterm/xterm/css/xterm.css';
 
 import * as ShortcutsRegistry from './shortcuts-registry.js';
@@ -1973,6 +1979,29 @@ function clearPaneColor(paneId) {
   render();
 }
 
+// VIB-16: open the command palette over the current panes. Build a
+// feature-agnostic item list and let the palette module do the rest.
+function openTabSwitcher() {
+  hideContextMenu();
+  if (renamingPaneId !== null) {
+    cancelRenamePane();
+  }
+  if (!settingsPanelEl.classList.contains('is-hidden')) {
+    settingsPanelEl.classList.add('is-hidden');
+  }
+
+  const items = panes.map((pane) => ({
+    id: pane.id,
+    label: getPaneLabel(pane) || pane.id,
+    accent: pane.customColor || pane.accent,
+  }));
+
+  openCommandPalette(items, focusPane, {
+    placeholder: 'Switch tab by title…',
+    emptyText: 'No matching tabs',
+  });
+}
+
 async function pasteImageIntoTerminal(paneId = focusedPaneId, options = {}) {
   const node = getPaneNode(paneId);
   if (!node?.sessionReady) {
@@ -2087,10 +2116,21 @@ function updateStatus() {
 window.addEventListener(
   'keydown',
   (event) => {
-    // Handle Windows-specific Ctrl+V paste
-    if (isWindowsCtrlVPasteHotkey(event) && document.activeElement?.tagName !== 'INPUT') {
+    // Command palette hotkey has highest priority
+    if (isCommandPaletteHotkey(event, bridge.platform)) {
       event.preventDefault();
-      void pasteIntoTerminal();
+      event.stopPropagation();
+      if (isCommandPaletteOpen()) {
+        closeCommandPalette();
+      } else {
+        openTabSwitcher();
+      }
+      return;
+    }
+
+    // While the palette is open, let its own input handle keys so global
+    // hotkeys don't fire underneath.
+    if (isCommandPaletteOpen()) {
       return;
     }
 
