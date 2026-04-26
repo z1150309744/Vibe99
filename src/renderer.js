@@ -769,6 +769,8 @@ function renderModalShellProfiles() {
   if (!overlay || !overlay._modalShellProfileList) return;
 
   const listEl = overlay._modalShellProfileList;
+  if (!listEl) return;
+
   listEl.replaceChildren();
 
   if (editingShellProfile) {
@@ -1827,7 +1829,7 @@ async function showTerminalContextMenu(node, event) {
   if (shellChildren.length > 0) {
     items.push(
       { type: 'separator' },
-      { label: 'Change Shell', children: shellChildren },
+      { label: 'Change Profile', children: shellChildren },
     );
   }
 
@@ -2138,9 +2140,16 @@ settingsButtonEl.addEventListener('click', (event) => {
   }
 });
 
-// Shell profiles modal button
+// Shell profiles modal button (clickable row)
 shellProfilesSettingsBtn.addEventListener('click', () => {
   openShellProfilesModal();
+});
+
+shellProfilesSettingsBtn.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    openShellProfilesModal();
+  }
 });
 
 // Fullscreen toggle

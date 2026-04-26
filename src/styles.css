@@ -351,6 +351,32 @@ body {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
+.settings-clickable-row {
+  cursor: pointer;
+  padding: 4px 0;
+  border-radius: 3px;
+  transition: background 120ms ease;
+}
+
+.settings-clickable-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-clickable-row:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-row-hint {
+  color: var(--panel-muted);
+  font-size: 14px;
+  transition: color 120ms ease;
+}
+
+.settings-clickable-row:hover .settings-row-hint {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .settings-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: var(--text);
