@@ -10,6 +10,9 @@ import {
 } from './command-palette.js';
 import '@xterm/xterm/css/xterm.css';
 
+import * as ShortcutsRegistry from './shortcuts-registry.js';
+import * as ShortcutsUI from './shortcuts-ui.js';
+
 function getRuntimePlatform() {
   const platform = navigator.platform.toLowerCase();
   if (platform.includes('win')) {
@@ -248,6 +251,7 @@ const paneMaskOpacityRangeEl = document.getElementById('pane-mask-alpha-range');
 const paneMaskOpacityInputEl = document.getElementById('pane-mask-alpha-input');
 const paneMaskOpacityValueEl = document.getElementById('pane-mask-alpha-value');
 const shellProfilesSettingsBtn = document.getElementById('shell-profiles-settings-btn');
+const keyboardShortcutsSettingsBtn = document.getElementById('keyboard-shortcuts-settings-btn');
 
 const settings = {
   fontSize: 13,
@@ -409,6 +413,13 @@ function applyPersistedSettings(nextSettings) {
   if (Number.isFinite(uiSettings.paneWidth)) {
     settings.paneWidth = uiSettings.paneWidth;
   }
+
+  // Load keyboard shortcuts
+  if (typeof uiSettings.shortcuts === 'object' && uiSettings.shortcuts !== null) {
+    ShortcutsRegistry.loadShortcutsFromSettings(uiSettings);
+  } else {
+    ShortcutsRegistry.loadShortcutsFromSettings({});
+  }
 }
 
 function buildSessionData() {
@@ -465,7 +476,15 @@ function scheduleSettingsSave() {
 
   pendingSettingsSave = window.setTimeout(() => {
     pendingSettingsSave = null;
-    bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
+    const settingsToSave = {
+      version: 3,
+      ui: {
+        ...settings,
+        shortcuts: ShortcutsRegistry.getShortcutsForSave()
+      },
+      session: buildSessionData()
+    };
+    bridge.saveSettings(settingsToSave).catch(reportError);
   }, 150);
 }
 
@@ -473,7 +492,15 @@ function flushSettingsSave() {
   if (pendingSettingsSave !== null) {
     window.clearTimeout(pendingSettingsSave);
     pendingSettingsSave = null;
-    void bridge.saveSettings({ version: 3, ui: settings, session: buildSessionData() }).catch(reportError);
+    const settingsToSave = {
+      version: 3,
+      ui: {
+        ...settings,
+        shortcuts: ShortcutsRegistry.getShortcutsForSave()
+      },
+      session: buildSessionData()
+    };
+    void bridge.saveSettings(settingsToSave).catch(reportError);
   }
 }
 
@@ -2083,12 +2110,13 @@ function updateStatus() {
 
   statusLabelEl.classList.remove('is-navigation-mode');
   statusLabelEl.textContent = `Focused: ${getPaneLabel(focusedPane) || focusedPane.id}`;
-  statusHintEl.textContent = 'Ctrl+B to enter navigation mode';
+  statusHintEl.textContent = 'Ctrl+B to enter navigation mode'; // Note: this will be updated by keyboard shortcuts
 }
 
 window.addEventListener(
   'keydown',
   (event) => {
+    // Command palette hotkey has highest priority
     if (isCommandPaletteHotkey(event, bridge.platform)) {
       event.preventDefault();
       event.stopPropagation();
@@ -2101,69 +2129,55 @@ window.addEventListener(
     }
 
     // While the palette is open, let its own input handle keys so global
-    // hotkeys (Ctrl+T, copy/paste, navigation) don't fire underneath.
+    // hotkeys don't fire underneath.
     if (isCommandPaletteOpen()) {
       return;
     }
 
-    const key = event.key.toLowerCase();
-    const isMac = bridge.platform === 'darwin';
-    const openTabHotkey = isMac
-      ? event.metaKey && !event.ctrlKey && !event.altKey && key === 't'
-      : event.ctrlKey && !event.metaKey && !event.altKey && key === 't';
-    const enterNavigationHotkey =
-      event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && key === 'b';
-    const copyHotkey = isMac
-      ? event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && key === 'c'
-      : event.ctrlKey && !event.metaKey && !event.altKey && event.shiftKey && key === 'c';
-    const pasteHotkey = isMac
-      ? event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && key === 'v'
-      : event.ctrlKey && !event.metaKey && !event.altKey && event.shiftKey && key === 'v';
-    const windowsCtrlVPasteHotkey = isWindowsCtrlVPasteHotkey(event);
+    // Check keyboard shortcuts from registry
+    const shortcuts = ShortcutsRegistry.getKeyboardShortcuts();
+    for (const [id, shortcut] of Object.entries(shortcuts)) {
+      if (ShortcutsRegistry.matchesShortcut(event, shortcut)) {
+        // Skip navigation mode shortcuts if not in navigation mode
+        if ((id === 'move-left' || id === 'move-right' || id === 'focus-terminal') &&
+            !isNavigationMode) {
+          continue;
+        }
 
-    if (openTabHotkey) {
-      event.preventDefault();
-      addPane();
-      return;
-    }
+        // Skip shortcuts that require no editable target
+        if (document.activeElement?.tagName === 'INPUT' &&
+            (id === 'navigation-mode' || id === 'copy' || id === 'paste')) {
+          continue;
+        }
 
-    if (enterNavigationHotkey && document.activeElement?.tagName !== 'INPUT') {
-      event.preventDefault();
-      enterNavigationMode();
-      return;
-    }
+        event.preventDefault();
 
-    if (copyHotkey && document.activeElement?.tagName !== 'INPUT') {
-      event.preventDefault();
-      copyTerminalSelection();
-      return;
-    }
-
-    if ((pasteHotkey || windowsCtrlVPasteHotkey) && document.activeElement?.tagName !== 'INPUT') {
-      event.preventDefault();
-      void pasteIntoTerminal();
-      return;
-    }
-
-    if (isEditableTarget() || !isNavigationMode) {
-      return;
-    }
-
-    if (event.key === 'ArrowLeft' || key === 'h') {
-      event.preventDefault();
-      moveFocus(-1);
-      return;
-    }
-
-    if (event.key === 'ArrowRight' || key === 'l') {
-      event.preventDefault();
-      moveFocus(1);
-      return;
-    }
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      focusPane(focusedPaneId);
+        // Execute the shortcut action
+        switch (shortcut.action) {
+          case 'addPane':
+            addPane();
+            break;
+          case 'enterNavigationMode':
+            enterNavigationMode();
+            break;
+          case 'copyTerminalSelection':
+            copyTerminalSelection();
+            break;
+          case 'pasteIntoTerminal':
+            void pasteIntoTerminal();
+            break;
+          case 'moveFocusLeft':
+            moveFocus(-1);
+            break;
+          case 'moveFocusRight':
+            moveFocus(1);
+            break;
+          case 'focusTerminal':
+            focusPane(focusedPaneId);
+            break;
+        }
+        return;
+      }
     }
   },
   true
@@ -2195,6 +2209,22 @@ shellProfilesSettingsBtn.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
     openShellProfilesModal();
+  }
+});
+
+// ----------------------------------------------------------------
+// Keyboard shortcuts modal
+// ----------------------------------------------------------------
+
+// Keyboard shortcuts modal button (clickable row)
+keyboardShortcutsSettingsBtn.addEventListener('click', () => {
+  ShortcutsUI.openKeyboardShortcutsModal(bridge, scheduleSettingsSave);
+});
+
+keyboardShortcutsSettingsBtn.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    ShortcutsUI.openKeyboardShortcutsModal(bridge, scheduleSettingsSave);
   }
 });
 
