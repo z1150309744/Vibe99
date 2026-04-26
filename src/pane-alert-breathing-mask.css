@@ -1,21 +1,33 @@
-/* Breathing-mask alert: layered above .pane-surface so the pulse reads
-   even over busy terminal content. Color follows --pane-accent which the
-   renderer already sets per pane. */
+/* Breathing-mask alert: layered ABOVE `.pane::after` (the color overlay,
+   z-index 10) so the pulse reads at any "BG mask opacity" value — including
+   the fully-opaque end where the overlay would otherwise hide a sibling
+   layer. Color follows --pane-accent which the renderer sets per pane.
+   `mix-blend-mode: screen` keeps the pulse a brightening effect regardless
+   of what's underneath (bare terminal, accent-tinted overlay, etc.). */
 .pane-activity-mask {
   position: absolute;
   inset: 0;
   background: var(--pane-accent);
   opacity: 0;
   pointer-events: none;
+  z-index: 11;
+  mix-blend-mode: screen;
+  box-shadow: inset 0 0 0 0 transparent;
 }
 
 @keyframes pane-breathing-pulse {
   0%,
   100% {
-    opacity: 0.06;
+    opacity: 0.18;
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--pane-accent) 70%, white),
+      inset 0 0 12px 2px color-mix(in srgb, var(--pane-accent) 60%, transparent);
   }
   50% {
-    opacity: 0.32;
+    opacity: 0.65;
+    box-shadow:
+      inset 0 0 0 3px color-mix(in srgb, var(--pane-accent) 90%, white),
+      inset 0 0 28px 6px color-mix(in srgb, var(--pane-accent) 80%, transparent);
   }
 }
 
@@ -26,11 +38,15 @@
 .pane.is-focused .pane-activity-mask {
   animation: none;
   opacity: 0;
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pane.has-pending-activity .pane-activity-mask {
     animation: none;
-    opacity: 0.18;
+    opacity: 0.4;
+    box-shadow:
+      inset 0 0 0 3px color-mix(in srgb, var(--pane-accent) 80%, white),
+      inset 0 0 18px 4px color-mix(in srgb, var(--pane-accent) 70%, transparent);
   }
 }

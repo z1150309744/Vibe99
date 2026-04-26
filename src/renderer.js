@@ -277,6 +277,7 @@ const paneOpacityValueEl = document.getElementById('pane-opacity-value');
 const paneMaskOpacityRangeEl = document.getElementById('pane-mask-alpha-range');
 const paneMaskOpacityInputEl = document.getElementById('pane-mask-alpha-input');
 const paneMaskOpacityValueEl = document.getElementById('pane-mask-alpha-value');
+const breathingAlertToggleEl = document.getElementById('breathing-alert-toggle');
 const shellProfilesSettingsBtn = document.getElementById('shell-profiles-settings-btn');
 const keyboardShortcutsSettingsBtn = document.getElementById('keyboard-shortcuts-settings-btn');
 
@@ -286,6 +287,7 @@ const settings = {
   paneOpacity: 0.8,
   paneMaskOpacity: 0.25,
   paneWidth: 720,
+  breathingAlertEnabled: true,
 };
 let pendingSettingsSave = null;
 
@@ -421,6 +423,8 @@ function applySettings() {
   paneMaskOpacityRangeEl.value = settings.paneMaskOpacity.toFixed(2);
   paneMaskOpacityInputEl.value = settings.paneMaskOpacity.toFixed(2);
   paneMaskOpacityValueEl.textContent = settings.paneMaskOpacity.toFixed(2);
+  breathingAlertToggleEl.checked = settings.breathingAlertEnabled;
+  paneActivityWatcher.setGlobalEnabled(settings.breathingAlertEnabled);
 }
 
 function applyPersistedSettings(nextSettings) {
@@ -458,6 +462,10 @@ function applyPersistedSettings(nextSettings) {
     settings.paneWidth = uiSettings.paneWidth;
   }
 
+  if (typeof uiSettings.breathingAlertEnabled === 'boolean') {
+    settings.breathingAlertEnabled = uiSettings.breathingAlertEnabled;
+  }
+
   // Load keyboard shortcuts
   if (typeof uiSettings.shortcuts === 'object' && uiSettings.shortcuts !== null) {
     ShortcutsRegistry.loadShortcutsFromSettings(uiSettings);
@@ -475,6 +483,7 @@ function buildSessionData() {
       accent: p.accent,
       customColor: p.customColor,
       shellProfileId: p.shellProfileId,
+      breathingMonitor: p.breathingMonitor !== false,
     })),
     focusedPaneIndex: focusedIndex >= 0 ? focusedIndex : 0,
   };
@@ -491,6 +500,7 @@ function restoreSession(session) {
       accent: p.accent,
       customColor: (typeof p.customColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(p.customColor) && p.customColor) || undefined,
       shellProfileId: (typeof p.shellProfileId === 'string' && p.shellProfileId) || null,
+      breathingMonitor: p.breathingMonitor !== false,
     }));
 
   if (validPanes.length === 0) {
@@ -1379,6 +1389,7 @@ function ensurePaneNodes() {
       const node = createPane(pane);
       paneNodeMap.set(pane.id, node);
       stageEl.append(node.root);
+      paneActivityWatcher.setPaneEnabled(pane.id, pane.breathingMonitor !== false);
       requestAnimationFrame(() => {
         initializePaneTerminal(node);
       });
@@ -2022,9 +2033,15 @@ function showTabContextMenu(paneId, event) {
 
   const pane = panes[paneIndex];
   const hasCustomColor = pane && pane.customColor !== undefined;
+  const breathingOn = pane && pane.breathingMonitor !== false;
 
   const items = [
     { label: 'Change Color...', action: 'tab-change-color' },
+    {
+      label: 'Background activity alert',
+      action: 'tab-toggle-breathing',
+      shortcut: breathingOn ? '✓' : '',
+    },
     { type: 'separator' },
     { label: 'Rename Tab', action: 'tab-rename' },
     { label: 'Close Tab', action: 'tab-close', disabled: panes.length <= 1 },
@@ -2121,6 +2138,16 @@ function clearPaneColor(paneId) {
   render();
 }
 
+function togglePaneBreathingMonitor(paneId) {
+  const paneIndex = getPaneIndex(paneId);
+  if (paneIndex === -1) return;
+
+  const next = panes[paneIndex].breathingMonitor === false;
+  panes[paneIndex] = { ...panes[paneIndex], breathingMonitor: next };
+  paneActivityWatcher.setPaneEnabled(paneId, next);
+  scheduleSettingsSave();
+}
+
 // VIB-16: open the command palette over the current panes. Build a
 // feature-agnostic item list and let the palette module do the rest.
 function openTabSwitcher() {
@@ -2214,6 +2241,11 @@ function handleMenuAction(action, paneId) {
 
   if (action === 'tab-clear-color') {
     clearPaneColor(paneId);
+    return;
+  }
+
+  if (action === 'tab-toggle-breathing') {
+    togglePaneBreathingMonitor(paneId);
     return;
   }
 
@@ -2544,6 +2576,12 @@ paneMaskOpacityRangeEl.addEventListener('input', () => {
 
 paneMaskOpacityInputEl.addEventListener('change', () => {
   updatePaneMaskOpacity(paneMaskOpacityInputEl.value);
+});
+
+breathingAlertToggleEl.addEventListener('change', () => {
+  settings.breathingAlertEnabled = breathingAlertToggleEl.checked;
+  paneActivityWatcher.setGlobalEnabled(settings.breathingAlertEnabled);
+  scheduleSettingsSave();
 });
 
 window.addEventListener('pointerdown', (event) => {
