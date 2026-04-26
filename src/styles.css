@@ -207,7 +207,7 @@ body {
 
 .tabs-actions {
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
 }
 
 .tabs-add,
@@ -220,6 +220,7 @@ body {
   color: rgba(255, 255, 255, 0.82);
   font-size: 18px;
   line-height: 1;
+  vertical-align: middle;
   transition:
     background 120ms ease,
     color 120ms ease;
@@ -235,6 +236,8 @@ body {
   background: rgba(255, 255, 255, 0.02);
   color: rgba(255, 255, 255, 0.82);
   font-size: 18px;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 .tabs-fullscreen:hover {
