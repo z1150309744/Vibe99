@@ -2001,12 +2001,20 @@ async function showTerminalContextMenu(node, event) {
     isDefault: p.id === defaultShellProfileId,
   }));
 
+  const pane = panes[getPaneIndex(node.paneId)];
+  const breathingOn = pane && pane.breathingMonitor !== false;
+
   const items = [
     { label: 'Copy', action: 'terminal-copy', disabled: !node.terminal.hasSelection(), shortcut: '⇧⌘C' },
     { label: 'Paste', action: 'terminal-paste', disabled: !clipboardSnapshot.text, shortcut: '⇧⌘V' },
     { label: 'Paste Image', action: 'terminal-paste-image', disabled: !clipboardSnapshot.hasImage },
     { type: 'separator' },
     { label: 'Change Color...', action: 'terminal-change-color' },
+    {
+      label: 'Background activity alert',
+      action: 'pane-toggle-breathing',
+      shortcut: breathingOn ? '✓' : '',
+    },
     { label: 'Select All', action: 'terminal-select-all', shortcut: '⌘A' },
   ];
 
@@ -2033,15 +2041,9 @@ function showTabContextMenu(paneId, event) {
 
   const pane = panes[paneIndex];
   const hasCustomColor = pane && pane.customColor !== undefined;
-  const breathingOn = pane && pane.breathingMonitor !== false;
 
   const items = [
     { label: 'Change Color...', action: 'tab-change-color' },
-    {
-      label: 'Background activity alert',
-      action: 'tab-toggle-breathing',
-      shortcut: breathingOn ? '✓' : '',
-    },
     { type: 'separator' },
     { label: 'Rename Tab', action: 'tab-rename' },
     { label: 'Close Tab', action: 'tab-close', disabled: panes.length <= 1 },
@@ -2244,7 +2246,7 @@ function handleMenuAction(action, paneId) {
     return;
   }
 
-  if (action === 'tab-toggle-breathing') {
+  if (action === 'pane-toggle-breathing') {
     togglePaneBreathingMonitor(paneId);
     return;
   }
