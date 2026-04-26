@@ -552,8 +552,6 @@ function loadShellProfiles() {
   }).catch(reportError);
 }
 
-}
-
 function createProfileActionButton(label, title, onClick) {
   const btn = document.createElement('button');
   btn.type = 'button';
