@@ -202,7 +202,7 @@ const initialPanes = [
     title: null,
     terminalTitle: bridge.defaultTabTitle,
     cwd: bridge.defaultCwd,
-    accent: '#e69f00',
+    accent: '#00a8e8',
     shellProfileId: null,
   },
   {
@@ -210,7 +210,7 @@ const initialPanes = [
     title: null,
     terminalTitle: bridge.defaultTabTitle,
     cwd: bridge.defaultCwd,
-    accent: '#009e73',
+    accent: '#e84393',
     shellProfileId: null,
   },
   {
@@ -218,24 +218,25 @@ const initialPanes = [
     title: null,
     terminalTitle: bridge.defaultTabTitle,
     cwd: bridge.defaultCwd,
-    accent: '#cc78bc',
+    accent: '#fdab0f',
     shellProfileId: null,
   },
 ];
 
-// Okabe-Ito palette (colorblind-safe, maximum perceptual distance) + well-chosen additions.
-// Hue order spans the full circle; luminance alternates high/low for strong visual separation.
+// High-saturation, high-contrast palette for dark backgrounds.
+// Each hue appears once; luminance alternates between bright and dark for
+// maximum visual separation across all adjacent pairs.
 const accentPalette = [
-  '#e69f00', // amber
-  '#009e73', // teal-green
-  '#cc78bc', // mauve
-  '#0072b2', // blue
-  '#d55e00', // orange
-  '#f0e442', // yellow
-  '#56b4e9', // sky blue
-  '#e0172a', // vermillion
-  '#762a83', // purple
-  '#1a6642', // dark green
+  '#00a8e8', // vivid sky blue
+  '#e84393', // hot pink
+  '#fdab0f', // bright gold
+  '#00cec9', // bright teal
+  '#e17055', // coral red
+  '#a29bfe', // lavender
+  '#55efc4', // mint green
+  '#d63031', // vivid red
+  '#fdcb6e', // lemon yellow
+  '#636e72', // cool gray
 ];
 
 let panes = initialPanes.map((pane) => ({ ...pane }));
@@ -1906,12 +1907,12 @@ function showTabContextMenu(paneId, event) {
 }
 
 // Preset colors for pane customization (VIB-10)
-// Uses the same Okabe-Ito-based palette as accentPalette for visual consistency.
+// Uses the same high-contrast palette as accentPalette for visual consistency.
 const presetPaneColors = [
-  '#e69f00', '#009e73', '#cc78bc', '#0072b2',
-  '#d55e00', '#f0e442', '#56b4e9', '#e0172a',
-  '#762a83', '#1a6642', '#ee7733', '#33bbee',
-  '#008080', '#eecc66', '#cc3311', '#005588',
+  '#00a8e8', '#e84393', '#fdab0f', '#00cec9',
+  '#e17055', '#a29bfe', '#55efc4', '#d63031',
+  '#fdcb6e', '#636e72', '#0984e3', '#ff7675',
+  '#b2bec3', '#74b9ff', '#55a3ff', '#dfe6e9',
 ];
 
 function showColorPicker(paneId) {
