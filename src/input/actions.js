@@ -48,7 +48,10 @@ export function createActions(deps) {
     focusLast:     () => deps.focusPaneAt(deps.getPaneCount() - 1),
     jumpTo:        (e) => {
       const n = parseInt(e.key, 10);
-      if (n >= 1 && n <= deps.getPaneCount()) deps.focusPaneAt(n - 1);
+      if (n >= 1 && n <= deps.getPaneCount()) {
+        const paneId = deps.getPaneIdAt(n - 1);
+        if (paneId) deps.focusPane(paneId);
+      }
     },
 
     // Navigation mode — editing (VIB-33)

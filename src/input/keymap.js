@@ -146,9 +146,19 @@ function matchesChordAlt(event, alt) {
   } else {
     if (normalizeKey(event.key) !== normalizeKey(alt.key)) return false;
   }
+
   const ctrlHeld = Boolean(event.ctrlKey || event.metaKey);
   if (alt.ctrl !== ctrlHeld) return false;
-  if (alt.shift !== Boolean(event.shiftKey)) return false;
+
+  // Special case for '?' key: it requires Shift on most keyboards,
+  // but the chord is written as just '?' (no Shift modifier).
+  // Ignore shift state when matching '?'.
+  if (alt.key === '?') {
+    // Skip shift check for '?' key
+  } else {
+    if (alt.shift !== Boolean(event.shiftKey)) return false;
+  }
+
   if (alt.alt !== Boolean(event.altKey)) return false;
   return true;
 }

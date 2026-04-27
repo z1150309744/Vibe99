@@ -2209,6 +2209,11 @@ function getPaneCount() {
   return panes.length;
 }
 
+function getPaneIdAt(index) {
+  if (panes.length === 0 || index < 0 || index >= panes.length) return null;
+  return panes[index].id;
+}
+
 // Two-step close confirmation state
 let pendingClosePaneId = null;
 
@@ -2235,6 +2240,10 @@ function requestClosePane(paneId) {
 function startInlineRename(paneId) {
   const index = panes.findIndex((pane) => pane.id === paneId);
   if (index !== -1) {
+    // Exit nav mode before starting rename
+    if (currentMode === 'nav') {
+      setMode('terminal');
+    }
     beginRenamePane(index);
   }
 }
@@ -2269,6 +2278,7 @@ const keyboardActions = createActions({
   openTabSwitcher,
   focusPaneAt,
   getPaneCount,
+  getPaneIdAt,
   requestClosePane,
   startInlineRename,
   openKeymapHelpModal,

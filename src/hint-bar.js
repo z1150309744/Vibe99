@@ -33,22 +33,10 @@ export function renderHintBar(keymap, currentMode, focusedPaneLabel, isMinimal =
     }
   }
 
-  // For nav mode, prioritize VIB-33 hints and remove redundant ones
+  // For nav mode, show all hints in keymap order (no reordering needed)
   if (currentMode === 'nav') {
-    // Remove redundant h/l hints (have arrow equivalents)
-    entries = entries.filter(e => e.action !== 'focusPrev' || !e.id?.startsWith('nav-'));
-    entries = entries.filter(e => e.action !== 'focusNext' || !e.id?.startsWith('nav-'));
-
-    // Prioritize: keep only entries with hints, then take first 6
-    const priorityOrder = ['cancelNav', 'commitFocus', 'jumpTo', 'newPane', 'closePane', 'renamePane', 'showKeymapHelp', 'focusFirst', 'focusLast'];
-    entries.sort((a, b) => {
-      const aIndex = priorityOrder.indexOf(a.action);
-      const bIndex = priorityOrder.indexOf(b.action);
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
-      return 0;
-    });
+    // Keep all entries with hints, maintain original keymap order
+    entries = entries.filter(entry => entry.hint);
   }
 
   // Show at most 6 items; only show entries with hint text
@@ -63,9 +51,15 @@ export function renderHintBar(keymap, currentMode, focusedPaneLabel, isMinimal =
     // Normal mode: show all hints
     hintsHtml = visible
       .map(entry => {
-        // For nav mode, wrap in kbd for emphasis
+        // For nav mode, parse hint to separate key and description
         if (currentMode === 'nav' && entry.mode === 'nav') {
-          return `<span class="hint"><kbd>${entry.hint}</kbd></span>`;
+          const parts = entry.hint.split(' ');
+          if (parts.length >= 2) {
+            const key = parts[0];
+            const desc = parts.slice(1).join(' ');
+            return `<span class="hint"><kbd>${key}</kbd> ${desc}</span>`;
+          }
+          return `<span class="hint">${entry.hint}</span>`;
         }
         const chord = formatChordForHint(entry.chord, platform);
         return `<span class="hint"><kbd>${chord}</kbd> ${entry.hint}</span>`;
