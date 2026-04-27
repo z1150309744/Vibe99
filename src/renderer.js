@@ -202,7 +202,7 @@ const initialPanes = [
     title: null,
     terminalTitle: bridge.defaultTabTitle,
     cwd: bridge.defaultCwd,
-    accent: '#ff6b57',
+    accent: '#e69f00',
     shellProfileId: null,
   },
   {
@@ -210,7 +210,7 @@ const initialPanes = [
     title: null,
     terminalTitle: bridge.defaultTabTitle,
     cwd: bridge.defaultCwd,
-    accent: '#ff9f1c',
+    accent: '#009e73',
     shellProfileId: null,
   },
   {
@@ -218,22 +218,24 @@ const initialPanes = [
     title: null,
     terminalTitle: bridge.defaultTabTitle,
     cwd: bridge.defaultCwd,
-    accent: '#ffd166',
+    accent: '#cc78bc',
     shellProfileId: null,
   },
 ];
 
+// Okabe-Ito palette (colorblind-safe, maximum perceptual distance) + well-chosen additions.
+// Hue order spans the full circle; luminance alternates high/low for strong visual separation.
 const accentPalette = [
-  '#ff6b57',
-  '#ff9f1c',
-  '#ffd166',
-  '#06d6a0',
-  '#118ab2',
-  '#9b5de5',
-  '#ef476f',
-  '#7bd389',
-  '#5cc8ff',
-  '#f4a261',
+  '#e69f00', // amber
+  '#009e73', // teal-green
+  '#cc78bc', // mauve
+  '#0072b2', // blue
+  '#d55e00', // orange
+  '#f0e442', // yellow
+  '#56b4e9', // sky blue
+  '#e0172a', // vermillion
+  '#762a83', // purple
+  '#1a6642', // dark green
 ];
 
 let panes = initialPanes.map((pane) => ({ ...pane }));
@@ -1904,11 +1906,12 @@ function showTabContextMenu(paneId, event) {
 }
 
 // Preset colors for pane customization (VIB-10)
+// Uses the same Okabe-Ito-based palette as accentPalette for visual consistency.
 const presetPaneColors = [
-  '#ff6b57', '#ff9f1c', '#ffd166', '#06d6a0',
-  '#118ab2', '#9b5de5', '#ef476f', '#7bd389',
-  '#5cc8ff', '#f4a261', '#e76f51', '#2a9d8f',
-  '#e9c46a', '#f4a261', '#264653', '#8d99ae',
+  '#e69f00', '#009e73', '#cc78bc', '#0072b2',
+  '#d55e00', '#f0e442', '#56b4e9', '#e0172a',
+  '#762a83', '#1a6642', '#ee7733', '#33bbee',
+  '#008080', '#eecc66', '#cc3311', '#005588',
 ];
 
 function showColorPicker(paneId) {

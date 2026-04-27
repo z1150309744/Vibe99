@@ -2,6 +2,13 @@
 
 <!-- towncrier release notes start -->
 
+## 0.7.2 - 2026-04-27
+
+### Improved
+
+- Replaced pane default color palette with Okabe-Ito-based divergent colors (VIB-41). Adjacent colors are now visually distinct across the full hue circle, with alternating luminance for stronger separation. Covers accentPalette, presetPaneColors, and initialPanes.
+
+
 ## 0.7.1 - 2026-04-26
 
 ### Misc
