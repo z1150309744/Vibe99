@@ -279,7 +279,6 @@ const paneMaskOpacityRangeEl = document.getElementById('pane-mask-alpha-range');
 const paneMaskOpacityInputEl = document.getElementById('pane-mask-alpha-input');
 const paneMaskOpacityValueEl = document.getElementById('pane-mask-alpha-value');
 const breathingAlertToggleEl = document.getElementById('breathing-alert-toggle');
-const compactHintBarToggleEl = document.getElementById('compact-hint-bar-toggle');
 const shellProfilesSettingsBtn = document.getElementById('shell-profiles-settings-btn');
 const keyboardShortcutsSettingsBtn = document.getElementById('keyboard-shortcuts-settings-btn');
 
@@ -290,7 +289,6 @@ const settings = {
   paneMaskOpacity: 0.75,
   paneWidth: 720,
   breathingAlertEnabled: true,
-  compactHintBar: false,
 };
 let pendingSettingsSave = null;
 
@@ -404,8 +402,6 @@ function applySettings() {
   paneMaskOpacityValueEl.textContent = settings.paneMaskOpacity.toFixed(2);
   breathingAlertToggleEl.checked = settings.breathingAlertEnabled;
   paneActivityWatcher.setGlobalEnabled(settings.breathingAlertEnabled);
-  compactHintBarToggleEl.checked = settings.compactHintBar;
-  document.body.classList.toggle('is-minimal-hint', settings.compactHintBar);
 }
 
 function applyPersistedSettings(nextSettings) {
@@ -450,10 +446,6 @@ function applyPersistedSettings(nextSettings) {
 
   if (typeof uiSettings.breathingAlertEnabled === 'boolean') {
     settings.breathingAlertEnabled = uiSettings.breathingAlertEnabled;
-  }
-
-  if (typeof uiSettings.compactHintBar === 'boolean') {
-    settings.compactHintBar = uiSettings.compactHintBar;
   }
 
   // Load keyboard shortcuts
@@ -2160,7 +2152,6 @@ function updateStatus() {
     keymap,
     currentMode,
     focusedPaneLabel,
-    settings.compactHintBar,
     bridge.platform
   );
 
@@ -2479,12 +2470,6 @@ paneMaskOpacityInputEl.addEventListener('change', () => {
 breathingAlertToggleEl.addEventListener('change', () => {
   settings.breathingAlertEnabled = breathingAlertToggleEl.checked;
   paneActivityWatcher.setGlobalEnabled(settings.breathingAlertEnabled);
-  scheduleSettingsSave();
-});
-
-compactHintBarToggleEl.addEventListener('change', () => {
-  settings.compactHintBar = compactHintBarToggleEl.checked;
-  document.body.classList.toggle('is-minimal-hint', settings.compactHintBar);
   scheduleSettingsSave();
 });
 

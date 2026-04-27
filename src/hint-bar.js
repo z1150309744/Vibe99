@@ -10,11 +10,10 @@
  * @param {Array} keymap - The keymap from ShortcutsRegistry.getActiveKeymap()
  * @param {string} currentMode - The current mode ('terminal' or 'nav')
  * @param {string} focusedPaneLabel - The label of the focused pane (for terminal mode)
- * @param {boolean} isMinimal - Whether to show minimal hints (compact mode)
  * @param {string} platform - The platform ('linux', 'darwin', 'win32')
  * @returns {object} - { modeLabel: string, hintsHtml: string }
  */
-export function renderHintBar(keymap, currentMode, focusedPaneLabel, isMinimal = false, platform = 'linux') {
+export function renderHintBar(keymap, currentMode, focusedPaneLabel, platform = 'linux') {
   // Filter keymap entries for current mode
   let entries = keymap.filter(entry =>
     (entry.mode === currentMode) || (currentMode === 'terminal' && entry.mode === '*')
@@ -43,12 +42,7 @@ export function renderHintBar(keymap, currentMode, focusedPaneLabel, isMinimal =
 
   // Build hints HTML
   let hintsHtml = '';
-  if (isMinimal) {
-    // Minimal mode: just show mode name and "?"
-    hintsHtml = '<span class="hint-minimal">?</span>';
-  } else {
-    // Normal mode: show all hints
-    hintsHtml = visible
+  hintsHtml = visible
       .map(entry => {
         // For nav mode, hint is in "key description" format, wrap key in kbd
         if (currentMode === 'nav' && entry.mode === 'nav') {
@@ -64,7 +58,6 @@ export function renderHintBar(keymap, currentMode, focusedPaneLabel, isMinimal =
         return `<span class="hint"><kbd>${chord}</kbd> ${entry.hint}</span>`;
       })
       .join('<span class="hint-sep">·</span>');
-  }
 
   // Determine mode label
   let modeLabel;

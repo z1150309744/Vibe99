@@ -648,11 +648,6 @@ body {
   color: rgba(255, 255, 255, 0.2);
 }
 
-.hint-minimal {
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 14px;
-}
-
 /* Navigation mode - entire status bar background color */
 body.is-navigation-mode .status-bar {
   background: rgba(255, 209, 102, 0.12);
@@ -670,11 +665,6 @@ body.is-navigation-mode .hint kbd {
 
 body.is-navigation-mode .hint-sep {
   color: rgba(255, 209, 102, 0.4);
-}
-
-/* Compact hint bar mode */
-.is-minimal-hint .status-hint {
-  display: none;
 }
 
 /* Navigation mode - number badges in tabs */
