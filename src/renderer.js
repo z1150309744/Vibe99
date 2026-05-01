@@ -98,6 +98,7 @@ function createUnavailableBridge() {
     closeWindow: fail,
     readClipboardText: () => Promise.reject(new Error('Clipboard bridge is unavailable')),
     writeClipboardText: fail,
+    readClipboardFilePaths: () => Promise.resolve([]),
     getClipboardSnapshot: () => ({ text: '', hasImage: false }),
     openExternalUrl: fail,
     showContextMenu: fail,
@@ -172,6 +173,7 @@ function createTauriBridge(tauri) {
     closeWindow: () => getCurrentWindow().close(),
     readClipboardText: () => clipboardReadText(),
     writeClipboardText: (text) => clipboardWriteText(text),
+    readClipboardFilePaths: () => invoke('clipboard_read_file_paths'),
     getClipboardSnapshot: async () => {
       try {
         const text = await clipboardReadText();
@@ -1309,6 +1311,21 @@ function createPane(pane) {
     ) {
       return false;
     }
+    // Cmd+V on macOS: intercept so we can handle file-URL clipboard content
+    // that the Web Clipboard API cannot read. Our pasteIntoTerminal() has a
+    // fallback to readClipboardFilePaths().
+    if (
+      event.type === 'keydown' &&
+      bridge.platform === 'darwin' &&
+      event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey &&
+      (event.key === 'v' || event.key === 'V')
+    ) {
+      void pasteIntoTerminal(pane.id);
+      return false;
+    }
     if (!isWindowsCtrlVPasteHotkey(event)) {
       return true;
     }
@@ -1912,7 +1929,15 @@ function getPaneNode(paneId) {
 
 async function getClipboardSnapshot() {
   try {
-    return await bridge.getClipboardSnapshot?.() ?? { text: '', hasImage: false };
+    const filePaths = await bridge.readClipboardFilePaths().catch(() => []);
+    if (filePaths.length > 0) {
+      return {
+        text: filePaths.map((p) => p.includes(' ') ? `'${p}'` : p).join(' '),
+        hasImage: false,
+      };
+    }
+    const snapshot = await bridge.getClipboardSnapshot?.().catch(() => null) ?? null;
+    return snapshot ?? { text: '', hasImage: false };
   } catch {
     return { text: '', hasImage: false };
   }
@@ -1950,7 +1975,15 @@ async function pasteIntoTerminal(paneId = focusedPaneId, options = {}) {
     return false;
   }
 
-  const text = options.clipboardSnapshot?.text ?? (await bridge.readClipboardText());
+  let text = options.clipboardSnapshot?.text;
+  if (!text) {
+    const filePaths = await bridge.readClipboardFilePaths().catch(() => []);
+    if (filePaths.length > 0) {
+      text = filePaths.map((p) => p.includes(' ') ? `'${p}'` : p).join(' ');
+    } else {
+      text = await bridge.readClipboardText().catch(() => '');
+    }
+  }
   if (!text) {
     return false;
   }

@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 use tauri::Manager;
+use vibe99_lib::commands::clipboard;
 use vibe99_lib::commands::context_menu;
 use vibe99_lib::commands::settings;
 use vibe99_lib::commands::shell_profile;
@@ -21,6 +22,7 @@ fn main() {
             pty: Arc::new(PtyManager::new()),
         })
         .invoke_handler(tauri::generate_handler![
+            clipboard::clipboard_read_file_paths,
             terminal::terminal_create,
             terminal::terminal_write,
             terminal::terminal_resize,
