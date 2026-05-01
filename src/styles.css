@@ -124,7 +124,7 @@ body {
   min-width: 0;
   width: 100%;
   justify-content: center;
-  padding: 0 28px 0 22px;
+  padding: 0 28px 0 28px;
   color: inherit;
   font-size: var(--app-font-size);
   touch-action: none;
@@ -167,17 +167,21 @@ body {
   position: absolute;
   left: 8px;
   top: 50%;
-  width: 9px;
-  height: 9px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
   transform: translateY(-50%);
   background: var(--pane-accent);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--swatch-text-color, rgba(0, 0, 0, 0.75));
+  line-height: 1;
 }
 
-.tab.is-focused .tab-swatch {
-  display: none;
-}
 
 .tab-label {
   min-width: 0;
@@ -744,15 +748,9 @@ body.is-navigation-mode .hint-sep {
 
 /* Navigation mode - number badges in tabs */
 body.is-navigation-mode .tab-swatch {
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	width: 20px;
 	height: 20px;
 	font-size: 13px;
-	font-weight: 700;
-	color: var(--swatch-text-color, rgba(0, 0, 0, 0.75));
-	line-height: 1;
 }
 
 /* Pending close confirmation */

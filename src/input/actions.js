@@ -28,6 +28,15 @@ export function createActions(deps) {
     copyTerminalSelection: () => deps.copyTerminalSelection(),
     pasteIntoTerminal: () => { void deps.pasteIntoTerminal(); },
 
+    // Global pane jump by number
+    globalJumpTo: (e) => {
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= deps.getPaneCount()) {
+        const paneId = deps.getPaneIdAt(n - 1);
+        if (paneId) deps.focusPane(paneId);
+      }
+    },
+
     // Command palette
     toggleCommandPalette: () => {
       if (deps.isCommandPaletteOpen()) {

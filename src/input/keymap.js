@@ -34,6 +34,7 @@ export const KEYMAP = [
   { id: 'navigate-right',  mode: '*',   chord: 'Ctrl+ArrowRight', action: 'navigateRight',         hint: '→ pane' },
   { id: 'copy',            mode: '*',   chord: 'Ctrl+Shift+C',    action: 'copyTerminalSelection', hint: 'copy',             skipInInput: true },
   { id: 'paste',           mode: '*',   chord: 'Ctrl+Shift+V',    action: 'pasteIntoTerminal',     hint: 'paste',            skipInInput: true },
+  { mode: '*',   chord: 'Ctrl+1..9',       action: 'globalJumpTo',          hint: '⌘1-9 jump',       skipInInput: true, stopPropagation: true },
 
   // Navigation mode - non-customizable arrow keys (always available)
   { mode: 'nav', chord: 'ArrowLeft',  action: 'focusPrev',    hint: '← prev',  stopPropagation: true },
@@ -83,15 +84,21 @@ function parseChordAlt(alt) {
     throw new Error(`Empty chord alternative: ${alt}`);
   }
 
-  // Digit range pattern: '1..9' — matches any single digit 1–9.
-  if (tokens.length === 1 && /^\d\.\.\d$/.test(tokens[0])) {
-    const [lo, hi] = tokens[0].split('..').map(Number);
+  const lastToken = tokens[tokens.length - 1];
+  if (/^\d\.\.\d$/.test(lastToken)) {
+    const [lo, hi] = lastToken.split('..').map(Number);
+    const mods = tokens.slice(0, -1).map((t) => t.toLowerCase());
+    for (const m of mods) {
+      if (!MOD_TOKENS.has(m)) {
+        throw new Error(`Unknown modifier "${m}" in chord ${alt}`);
+      }
+    }
     return {
       key: '?',
-      ctrl: false,
-      shift: false,
-      alt: false,
-      _digitRange: { lo, hi }
+      ctrl: mods.includes('ctrl') || mods.includes('cmd') || mods.includes('meta'),
+      shift: mods.includes('shift'),
+      alt: mods.includes('alt') || mods.includes('option'),
+      _digitRange: { lo, hi },
     };
   }
 
@@ -133,7 +140,10 @@ function matchesChordAlt(event, alt) {
     const digit = parseInt(event.key, 10);
     if (Number.isNaN(digit)) return false;
     if (digit < lo || digit > hi) return false;
-    if (event.ctrlKey || event.metaKey || event.altKey) return false;
+    const ctrlHeld = Boolean(event.ctrlKey || event.metaKey);
+    if (alt.ctrl !== ctrlHeld) return false;
+    if (alt.shift !== Boolean(event.shiftKey)) return false;
+    if (alt.alt !== Boolean(event.altKey)) return false;
     return true;
   }
 

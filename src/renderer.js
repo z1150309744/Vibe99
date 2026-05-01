@@ -1109,12 +1109,8 @@ function createTab(pane, index, focusedIndex, dragMeta) {
   const swatch = document.createElement('span');
   swatch.className = 'tab-swatch';
 
-  // Show number badge in navigation mode
-  if (currentMode === 'nav') {
-    swatch.textContent = String(index + 1);
-    // Apply text color based on accent color brightness
-    swatch.style.setProperty('--swatch-text-color', 'var(--tab-text-color)');
-  }
+  swatch.textContent = String(index + 1);
+  swatch.style.setProperty('--swatch-text-color', 'var(--tab-text-color)');
 
   let label;
   if (renamingPaneId === pane.id) {
