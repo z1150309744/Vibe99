@@ -35,6 +35,7 @@ export const KEYMAP = [
   { id: 'copy',            mode: '*',   chord: 'Ctrl+Shift+C',    action: 'copyTerminalSelection', hint: 'copy',             skipInInput: true },
   { id: 'paste',           mode: '*',   chord: 'Ctrl+Shift+V',    action: 'pasteIntoTerminal',     hint: 'paste',            skipInInput: true },
   { mode: '*',   chord: 'Ctrl+1..9',       action: 'globalJumpTo',          hint: '⌘1-9 jump',       skipInInput: true, stopPropagation: true },
+  { id: 'close-focused-pane', mode: '*', chord: 'Ctrl+W', action: 'closeFocusedPane', hint: 'close pane', stopPropagation: true },
 
   // Navigation mode - non-customizable arrow keys (always available)
   { mode: 'nav', chord: 'ArrowLeft',  action: 'focusPrev',    hint: '← prev',  stopPropagation: true },

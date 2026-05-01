@@ -28,6 +28,9 @@ export function createActions(deps) {
     copyTerminalSelection: () => deps.copyTerminalSelection(),
     pasteIntoTerminal: () => { void deps.pasteIntoTerminal(); },
 
+    // Close focused pane (Cmd+W / Ctrl+W)
+    closeFocusedPane: () => deps.closeFocusedPane(),
+
     // Global pane jump by number
     globalJumpTo: (e) => {
       const n = parseInt(e.key, 10);

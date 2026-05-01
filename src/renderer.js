@@ -1248,6 +1248,16 @@ function createPane(pane) {
     ) {
       return false;
     }
+    // Ctrl+W / Cmd+W is reserved for closing the focused pane.
+    if (
+      event.type === 'keydown' &&
+      (event.ctrlKey || event.metaKey) &&
+      !event.shiftKey &&
+      !event.altKey &&
+      (event.key === 'w' || event.key === 'W')
+    ) {
+      return false;
+    }
     if (!isWindowsCtrlVPasteHotkey(event)) {
       return true;
     }
@@ -1461,6 +1471,17 @@ function addPane() {
   focusedPaneId = newPane.id;
   recordPaneVisit(newPane.id);
   render(true);
+}
+
+function closeFocusedPane() {
+  if (panes.length <= 1) {
+    void bridge.closeWindow().catch(reportError);
+    return;
+  }
+  const index = getPaneIndex(focusedPaneId);
+  if (index !== -1) {
+    closePane(index);
+  }
 }
 
 function closePane(index, options = {}) {
@@ -2391,6 +2412,7 @@ function openKeymapHelpModal() {
 // dispatcher.
 const keyboardActions = createActions({
   addPane,
+  closeFocusedPane,
   enterNavigationMode,
   cycleToRecentPane,
   navigateLeft,
