@@ -186,6 +186,10 @@ impl PtyManager {
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
 
+        if std::env::var("LANG").map_or(true, |v| v.is_empty()) {
+            cmd.env("LANG", "en_US.UTF-8");
+        }
+
         let mut child = pair
             .slave
             .spawn_command(cmd)
