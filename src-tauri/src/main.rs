@@ -16,6 +16,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init())
         .manage(AppState {
             pty: Arc::new(PtyManager::new()),
         })
@@ -25,6 +26,7 @@ fn main() {
             terminal::terminal_resize,
             terminal::terminal_destroy,
             terminal::get_cwd,
+            terminal::get_pane_cwds,
             settings::settings_load,
             settings::settings_save,
             shell_profile::shell_profiles_list,

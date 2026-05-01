@@ -11,6 +11,7 @@
     "shell:default",
     "opener:default",
     "opener:allow-open-url",
-    "dialog:default"
+    "dialog:default",
+    "deep-link:default"
   ]
 }

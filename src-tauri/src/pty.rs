@@ -371,6 +371,68 @@ impl PtyManager {
             sessions.clear();
         }
     }
+
+    #[cfg(unix)]
+    pub fn get_pane_cwds(&self) -> HashMap<String, String> {
+        let mut result = HashMap::new();
+        let sessions = match self.sessions.lock() {
+            Ok(s) => s,
+            Err(_) => return result,
+        };
+        for (pane_id, session) in sessions.iter() {
+            if let Some(pid) = session.master.process_group_leader() {
+                if let Some(cwd) = cwd_of_pid(pid) {
+                    result.insert(pane_id.clone(), cwd);
+                }
+            }
+        }
+        result
+    }
+
+    #[cfg(not(unix))]
+    pub fn get_pane_cwds(&self) -> HashMap<String, String> {
+        HashMap::new()
+    }
+}
+
+// ----------------------------------------------------------------
+// Process CWD resolution (macOS)
+// ----------------------------------------------------------------
+
+#[cfg(target_os = "macos")]
+fn cwd_of_pid(pid: libc::pid_t) -> Option<String> {
+    use std::mem;
+    let mut vpi: libc::proc_vnodepathinfo = unsafe { mem::zeroed() };
+    let size = mem::size_of::<libc::proc_vnodepathinfo>() as libc::c_int;
+    let ret = unsafe {
+        libc::proc_pidinfo(
+            pid,
+            libc::PROC_PIDVNODEPATHINFO,
+            0,
+            &mut vpi as *mut _ as *mut libc::c_void,
+            size,
+        )
+    };
+    if ret <= 0 {
+        return None;
+    }
+    let ptr = vpi.pvi_cdir.vip_path.as_ptr() as *const u8;
+    let flat = unsafe { std::slice::from_raw_parts(ptr, 1024) };
+    let len = flat.iter().position(|&b| b == 0).unwrap_or(flat.len());
+    let path = std::str::from_utf8(&flat[..len]).ok()?;
+    if path.is_empty() { None } else { Some(path.to_string()) }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn cwd_of_pid(pid: libc::pid_t) -> Option<String> {
+    std::fs::read_link(format!("/proc/{pid}/cwd"))
+        .ok()
+        .and_then(|p| p.to_str().map(String::from))
+}
+
+#[cfg(not(unix))]
+fn cwd_of_pid(_pid: i32) -> Option<String> {
+    None
 }
 
 // ----------------------------------------------------------------

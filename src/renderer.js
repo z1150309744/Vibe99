@@ -108,6 +108,7 @@ function createUnavailableBridge() {
     removeShellProfile: fail,
     setDefaultShellProfile: fail,
     detectShellProfiles: () => Promise.resolve([]),
+    getPaneCwds: () => Promise.resolve({}),
     onTerminalData: () => () => {},
     onTerminalExit: () => () => {},
     onMenuAction: () => () => {},
@@ -188,6 +189,7 @@ function createTauriBridge(tauri) {
     removeShellProfile: (profileId) => invoke('shell_profile_remove', { profileId }),
     setDefaultShellProfile: (profileId) => invoke('shell_profile_set', { profileId }),
     detectShellProfiles: () => invoke('shell_profiles_detect'),
+    getPaneCwds: () => invoke('get_pane_cwds'),
     onTerminalData: (handler) => onTauriEvent('vibe99:terminal-data', handler),
     onTerminalExit: (handler) => onTauriEvent('vibe99:terminal-exit', handler),
     onMenuAction: (handler) => onTauriEvent('vibe99:menu-action', handler),
@@ -361,6 +363,55 @@ const removeMenuActionListener = bridge.onMenuAction(({ action, paneId }) => {
     reportError(error);
   }
 });
+
+// Deep-link: focus a pane when opened via vibe99://focus?cwd=<path>
+const { listen: tauriListen } = window.__TAURI__.event;
+tauriListen('deep-link://new-url', (event) => {
+  const urls = event.payload;
+  if (!Array.isArray(urls)) return;
+  for (const raw of urls) {
+    try {
+      const url = new URL(raw);
+      if (url.host === 'focus') {
+        const targetCwd = url.searchParams.get('cwd');
+        if (targetCwd) focusPaneByCwd(targetCwd);
+      }
+    } catch (_) { /* ignore malformed URLs */ }
+  }
+});
+
+async function focusPaneByCwd(targetCwd) {
+  const normalize = (p) => p.replace(/\/+$/, '') || '/';
+  const target = normalize(targetCwd);
+  const targetDir = target.split('/').pop() || '';
+
+  let liveCwds = {};
+  try {
+    liveCwds = await bridge.getPaneCwds();
+  } catch (_) { /* fall through to static cwd matching */ }
+
+  // 1) exact match against live cwd from PTY foreground process
+  let match = panes.find((p) => normalize(liveCwds[p.id] || '') === target);
+  // 2) basename match against live cwd
+  if (!match && targetDir) {
+    match = panes.find((p) => {
+      const dir = normalize(liveCwds[p.id] || '').split('/').pop() || '';
+      return dir === targetDir;
+    });
+  }
+  // 3) fallback: exact match against static pane cwd
+  if (!match) {
+    match = panes.find((p) => normalize(p.cwd) === target);
+  }
+  // 4) fallback: basename match against static pane cwd
+  if (!match && targetDir) {
+    match = panes.find((p) => {
+      const dir = normalize(p.cwd).split('/').pop() || '';
+      return dir === targetDir;
+    });
+  }
+  if (match) focusPane(match.id);
+}
 
 function reportError(error) {
   const message = error instanceof Error ? error.message : String(error);

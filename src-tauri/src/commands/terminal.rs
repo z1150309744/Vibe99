@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -92,4 +93,9 @@ fn base64_decode(data: &str) -> Result<Vec<u8>, String> {
     base64::engine::general_purpose::STANDARD
         .decode(data)
         .map_err(|e| format!("{e}"))
+}
+
+#[tauri::command]
+pub fn get_pane_cwds(state: State<'_, AppState>) -> HashMap<String, String> {
+    state.pty.get_pane_cwds()
 }
